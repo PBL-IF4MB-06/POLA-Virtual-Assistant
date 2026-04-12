@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'app/app_state_scope.dart';
-import 'pages/home_shell.dart';
+import 'pages/app_shell_v7.dart';
 import 'state/auth_state.dart';
 import 'state/chat_state.dart';
 import 'state/settings_state.dart';
 import 'state/theme_state.dart';
+import 'ui/theme/pola_theme_v6.dart';
 
 void main() {
   runApp(const POLAApp());
@@ -20,9 +21,9 @@ class POLAApp extends StatefulWidget {
 
 class _POLAAppState extends State<POLAApp> {
   final AuthState _auth = AuthState();
-  final ChatState _chat = ChatState();
   final SettingsState _settings = SettingsState();
   final ThemeState _theme = ThemeState();
+  late final ChatState _chat = ChatState(settings: _settings);
 
   @override
   void initState() {
@@ -51,45 +52,15 @@ class _POLAAppState extends State<POLAApp> {
       child: AnimatedBuilder(
         animation: _theme,
         builder: (context, _) {
-          final baseLight = ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: _theme.seedColor,
-              brightness: Brightness.light,
-            ),
-            scaffoldBackgroundColor: const Color(0xFFF3F5F9),
-            appBarTheme: const AppBarTheme(
-              centerTitle: true,
-              elevation: 0,
-            ),
-            inputDecorationTheme: const InputDecorationTheme(
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          );
-
-          final baseDark = ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: _theme.seedColor,
-              brightness: Brightness.dark,
-            ),
-            appBarTheme: const AppBarTheme(
-              centerTitle: true,
-              elevation: 0,
-            ),
-            inputDecorationTheme: const InputDecorationTheme(
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          );
+          final light = PolaThemeV6.light(_theme.seedColor);
+          final dark = PolaThemeV6.dark(_theme.seedColor);
 
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: baseLight,
-            darkTheme: baseDark,
+            theme: light,
+            darkTheme: dark,
             themeMode: _theme.mode,
-            home: const HomeShell(),
+            home: const AppShellV7(),
           );
         },
       ),

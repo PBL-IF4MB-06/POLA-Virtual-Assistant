@@ -7,8 +7,9 @@ import '../models/conversation.dart';
 class ChatStorage {
   const ChatStorage();
 
-  static const _conversationsKey = 'pola_conversations_v1';
-  static const _activeConversationIdKey = 'pola_active_conversation_id_v1';
+  // v7: reset total (mockup UI rebuild)
+  static const _conversationsKey = 'pola_conversations_v7';
+  static const _activeConversationIdKey = 'pola_active_conversation_id_v7';
 
   Future<void> save(List<Conversation> conversations, String? activeId) async {
     final prefs = await SharedPreferences.getInstance();

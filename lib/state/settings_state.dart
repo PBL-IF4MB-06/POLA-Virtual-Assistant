@@ -2,20 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsState extends ChangeNotifier {
-  static const _kProfileName = 'pola_profile_name_v1';
-  static const _kUsername = 'pola_profile_username_v1';
-  static const _kAvatarBase64 = 'pola_profile_avatar_b64_v1';
-  static const _kAppLanguage = 'pola_app_language_v1';
-  static const _kPrimaryLanguage = 'pola_primary_language_v1';
-  static const _kAccentIndex = 'pola_accent_index_v1';
-  static const _kHaptic = 'pola_haptic_feedback_v1';
-  static const _kSpell = 'pola_spell_correction_v1';
-  static const _kVoice = 'pola_voice_v1';
-  static const _kSplitMode = 'pola_split_mode_v1';
-  static const _kBackgroundConvo = 'pola_background_conversation_v1';
-  static const _kAutoFinish = 'pola_auto_finish_v1';
-  static const _kTrendingSearch = 'pola_trending_search_v1';
-  static const _kFollowUp = 'pola_follow_up_suggestions_v1';
+  // v7: reset total preferences (mockup UI rebuild)
+  static const _kProfileName = 'pola_profile_name_v7';
+  static const _kUsername = 'pola_profile_username_v7';
+  static const _kAvatarBase64 = 'pola_profile_avatar_b64_v7';
+  static const _kAppLanguage = 'pola_app_language_v7';
+  static const _kPrimaryLanguage = 'pola_primary_language_v7';
+  static const _kAccentIndex = 'pola_accent_index_v7';
+  static const _kSoundEffects = 'pola_sound_effects_v7';
+  static const _kHaptic = 'pola_haptic_feedback_v7';
+  static const _kSpell = 'pola_spell_correction_v7';
+  static const _kVoice = 'pola_voice_v7';
+  static const _kSplitMode = 'pola_split_mode_v7';
+  static const _kBackgroundConvo = 'pola_background_conversation_v7';
+  static const _kAutoFinish = 'pola_auto_finish_v7';
+  static const _kTrendingSearch = 'pola_trending_search_v7';
+  static const _kFollowUp = 'pola_follow_up_suggestions_v7';
+  static const _kWebSearchEnabled = 'pola_web_search_enabled_v7';
+  static const _kGoogleCseApiKey = 'pola_google_cse_api_key_v7';
+  static const _kGoogleCseCx = 'pola_google_cse_cx_v7';
 
   String _profileName = '';
   String _username = '';
@@ -24,6 +29,7 @@ class SettingsState extends ChangeNotifier {
   String _primaryLanguage = 'Otomatis';
   int _accentIndex = 0;
 
+  bool _soundEffects = true;
   bool _hapticFeedback = true;
   bool _spellCorrection = true;
   String _voice = 'Arbor';
@@ -34,6 +40,10 @@ class SettingsState extends ChangeNotifier {
   bool _trendingSearch = true;
   bool _followUpSuggestions = true;
 
+  bool _webSearchEnabled = false;
+  String _googleCseApiKey = '';
+  String _googleCseCx = '';
+
   String get profileName => _profileName;
   String get username => _username;
   String get avatarBase64 => _avatarBase64;
@@ -41,6 +51,7 @@ class SettingsState extends ChangeNotifier {
   String get primaryLanguage => _primaryLanguage;
   int get accentIndex => _accentIndex;
 
+  bool get soundEffects => _soundEffects;
   bool get hapticFeedback => _hapticFeedback;
   bool get spellCorrection => _spellCorrection;
   String get voice => _voice;
@@ -51,6 +62,10 @@ class SettingsState extends ChangeNotifier {
   bool get trendingSearch => _trendingSearch;
   bool get followUpSuggestions => _followUpSuggestions;
 
+  bool get webSearchEnabled => _webSearchEnabled;
+  String get googleCseApiKey => _googleCseApiKey;
+  String get googleCseCx => _googleCseCx;
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     _profileName = prefs.getString(_kProfileName) ?? '';
@@ -60,6 +75,7 @@ class SettingsState extends ChangeNotifier {
     _primaryLanguage = prefs.getString(_kPrimaryLanguage) ?? 'Otomatis';
     _accentIndex = prefs.getInt(_kAccentIndex) ?? 0;
 
+    _soundEffects = prefs.getBool(_kSoundEffects) ?? true;
     _hapticFeedback = prefs.getBool(_kHaptic) ?? true;
     _spellCorrection = prefs.getBool(_kSpell) ?? true;
     _voice = prefs.getString(_kVoice) ?? 'Arbor';
@@ -69,7 +85,19 @@ class SettingsState extends ChangeNotifier {
     _autoFinish = prefs.getBool(_kAutoFinish) ?? true;
     _trendingSearch = prefs.getBool(_kTrendingSearch) ?? true;
     _followUpSuggestions = prefs.getBool(_kFollowUp) ?? true;
+
+    _webSearchEnabled = prefs.getBool(_kWebSearchEnabled) ?? false;
+    _googleCseApiKey = prefs.getString(_kGoogleCseApiKey) ?? '';
+    _googleCseCx = prefs.getString(_kGoogleCseCx) ?? '';
     notifyListeners();
+  }
+
+  Future<void> setSoundEffects(bool value) async {
+    if (value == _soundEffects) return;
+    _soundEffects = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSoundEffects, value);
   }
 
   Future<void> setProfile({String? name, String? username}) async {
@@ -184,6 +212,32 @@ class SettingsState extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kFollowUp, value);
+  }
+
+  Future<void> setWebSearchEnabled(bool value) async {
+    if (value == _webSearchEnabled) return;
+    _webSearchEnabled = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kWebSearchEnabled, value);
+  }
+
+  Future<void> setGoogleCseApiKey(String value) async {
+    final v = value.trim();
+    if (v == _googleCseApiKey) return;
+    _googleCseApiKey = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kGoogleCseApiKey, v);
+  }
+
+  Future<void> setGoogleCseCx(String value) async {
+    final v = value.trim();
+    if (v == _googleCseCx) return;
+    _googleCseCx = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kGoogleCseCx, v);
   }
 }
 

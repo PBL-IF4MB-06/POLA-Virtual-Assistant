@@ -10,10 +10,13 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _confirmPassword = TextEditingController();
-  bool _isLoginMode = true;
+  bool _isLoginMode = true; // true = Masuk, false = Daftar
+  bool _obscure = true;
+  bool _submitted = false;
 
   @override
   void dispose() {
@@ -29,200 +32,258 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('POLA Login (Opsional)'),
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text(''),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(46),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: _ModeTabs(
+              isLoginMode: _isLoginMode,
+              onChanged: (v) => setState(() => _isLoginMode = v),
+            ),
+          ),
+        ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).colorScheme.primary.withOpacity(0.9),
-                            Theme.of(context).colorScheme.secondary.withOpacity(0.8),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircleAvatar(
-                            radius: 26,
-                            backgroundColor: Colors.white,
-                            child: Icon(Icons.school, size: 30),
-                          ),
-                          const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'POLA - Polibatam Assistant',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Login untuk sinkron riwayat chat.\nBisa lanjut sebagai tamu juga.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: Colors.white70),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ChoiceChip(
-                                  label: const Text('Login'),
-                                  selected: _isLoginMode,
-                                  onSelected: (v) =>
-                                      setState(() => _isLoginMode = true),
-                                ),
-                                const SizedBox(width: 8),
-                                ChoiceChip(
-                                  label: const Text('Register'),
-                                  selected: !_isLoginMode,
-                                  onSelected: (v) =>
-                                      setState(() => _isLoginMode = false),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            TextField(
-                              controller: _email,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
-                                hintText: 'nama@polibatam.ac.id',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _password,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Password',
-                              ),
-                            ),
-                            if (!_isLoginMode) ...[
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _confirmPassword,
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Konfirmasi Password',
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 16),
-                            FilledButton(
-                              onPressed: () {
-                                final email = _email.text.trim();
-                                final pass = _password.text;
-                                if (email.isEmpty || pass.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Email dan password tidak boleh kosong.',
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                if (_isLoginMode) {
-                                  final ok = auth.loginWithPassword(
-                                    email: email,
-                                    password: pass,
-                                  );
-                                  if (!ok) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Email atau password salah.',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                } else {
-                                  if (_confirmPassword.text != pass) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Konfirmasi password tidak cocok.',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  final ok = auth.register(
-                                    email: email,
-                                    password: pass,
-                                  );
-                                  if (!ok) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Registrasi gagal. Email mungkin sudah terdaftar.',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                }
-
-                                Navigator.of(context).pop();
-                              },
-                              child: Text(_isLoginMode ? 'Login' : 'Register'),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton(
-                              onPressed: () {
-                                auth.continueAsGuest();
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Lanjut sebagai Tamu'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+      body: Form(
+        key: _formKey,
+        autovalidateMode:
+            _submitted ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                hintText: 'nama@polibatam.ac.id',
+              ),
+              validator: (v) {
+                final s = (v ?? '').trim();
+                if (s.isEmpty) return 'Email wajib diisi.';
+                if (!_looksLikeEmail(s)) return 'Format email tidak valid.';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _password,
+              obscureText: _obscure,
+              autofillHints: const [AutofillHints.password],
+              decoration: InputDecoration(
+                labelText: 'Kata Sandi',
+                helperText: _isLoginMode ? null : 'Minimal 8 karakter.',
+                suffixIcon: IconButton(
+                  tooltip: _obscure ? 'Show' : 'Hide',
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                ),
+              ),
+              validator: (v) {
+                final s = (v ?? '');
+                if (s.isEmpty) return 'Kata sandi wajib diisi.';
+                if (!_isLoginMode && s.length < 8) return 'Minimal 8 karakter.';
+                return null;
+              },
+              onFieldSubmitted: (_) => _submit(auth),
+            ),
+            if (_isLoginMode) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _forgotPassword(context),
+                  child: const Text('Lupa kata sandi?'),
+                ),
+              ),
+            ],
+            if (!_isLoginMode) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _confirmPassword,
+                obscureText: _obscure,
+                decoration: const InputDecoration(
+                  labelText: 'Konfirmasi Kata Sandi',
+                ),
+                validator: (v) {
+                  final s = (v ?? '');
+                  if (s.isEmpty) return 'Konfirmasi kata sandi wajib diisi.';
+                  if (s != _password.text) return 'Konfirmasi tidak cocok.';
+                  return null;
+                },
+              ),
+            ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => _submit(auth),
+                child: Text(_isLoginMode ? 'Masuk' : 'Daftar'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      auth.continueAsGuest();
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Lanjut sebagai Tamu'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.center,
+              child: TextButton(
+                onPressed: () => setState(() => _isLoginMode = !_isLoginMode),
+                child: Text(
+                  _isLoginMode ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk',
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submit(dynamic auth) {
+    setState(() => _submitted = true);
+    final okForm = _formKey.currentState?.validate() ?? false;
+    if (!okForm) return;
+
+    final email = _email.text.trim();
+    final pass = _password.text;
+
+    if (_isLoginMode) {
+      final ok = auth.loginWithPassword(email: email, password: pass);
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Email atau password salah.')),
+        );
+        return;
+      }
+    } else {
+      final ok = auth.register(email: email, password: pass);
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registrasi gagal. Email mungkin sudah terdaftar.')),
+        );
+        return;
+      }
+    }
+
+    Navigator.of(context).pop();
+  }
+}
+
+bool _looksLikeEmail(String s) {
+  return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(s);
+}
+
+Future<void> _forgotPassword(BuildContext context) async {
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Lupa kata sandi'),
+      content: const Text(
+        'Untuk versi demo ini, reset password belum terhubung ke email.\n\n'
+        'Kalau kamu lupa, kamu bisa buat akun baru atau minta admin reset secara manual.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Tutup'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ModeTabs extends StatelessWidget {
+  const _ModeTabs({required this.isLoginMode, required this.onChanged});
+
+  final bool isLoginMode;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: cs.surface.withValues(alpha: 0.82),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TabButton(
+              label: 'Masuk',
+              selected: isLoginMode,
+              onTap: () => onChanged(true),
+            ),
+          ),
+          Expanded(
+            child: _TabButton(
+              label: 'Daftar',
+              selected: !isLoginMode,
+              onTap: () => onChanged(false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabButton extends StatelessWidget {
+  const _TabButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: selected ? cs.primary : Colors.transparent,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ),
       ),
     );
   }

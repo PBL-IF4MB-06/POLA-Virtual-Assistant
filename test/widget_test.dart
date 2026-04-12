@@ -6,12 +6,12 @@ void main() {
     await tester.pumpWidget(const POLAApp());
     await tester.pumpAndSettle();
 
-    // Buka chat via bubble popup
-    await tester.tap(find.byTooltip('Buka chat POLA'));
+    // Masuk ke tab Chat (v7)
+    await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
 
-    // Pastikan hint input tampil di popup chat
-    expect(find.text('Tanyakan informasi kampus...'), findsOneWidget);
+    // Pastikan hint input tampil
+    expect(find.text('Tulis pesan...'), findsOneWidget);
   });
 }
 

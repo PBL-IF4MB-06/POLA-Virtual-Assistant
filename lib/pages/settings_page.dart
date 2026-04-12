@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../app/app_state_scope.dart';
+import 'admin_page.dart';
 import 'login_page.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -16,11 +17,12 @@ class SettingsPage extends StatelessWidget {
     final theme = AppStateScope.of(context).theme;
     final chat = AppStateScope.of(context).chat;
     final settings = AppStateScope.of(context).settings;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return AnimatedBuilder(
       animation: Listenable.merge([auth, settings, theme]),
       builder: (context, _) {
+        final isDark = theme.mode == ThemeMode.dark;
+        final isId = settings.appLanguage == 'Indonesia';
         final effectiveName =
             settings.profileName.isNotEmpty ? settings.profileName : auth.displayName;
         final handleBase = settings.username.isNotEmpty
@@ -29,114 +31,77 @@ class SettingsPage extends StatelessWidget {
         final handle = '@$handleBase';
 
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _ProfileHeader(
-              initials: _initialsOf(effectiveName),
-              name: effectiveName,
-              handle: handle,
-              avatarBase64: settings.avatarBase64,
-              onEdit: () async {
-                final nameController = TextEditingController(text: effectiveName);
-                final userController = TextEditingController(text: handleBase);
-                final result = await showDialog<Object?>(
-                  context: context,
-                  builder: (context) {
-                    var newAvatar = settings.avatarBase64;
-                    return StatefulBuilder(
-                      builder: (context, setStateDialog) {
-                        return AlertDialog(
-                          title: const Text('Edit profil'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: _AvatarEditor(
-                                  initials: _initialsOf(effectiveName),
-                                  avatarBase64: newAvatar,
-                                  onPick: () async {
-                                    final picker = ImagePicker();
-                                    final image = await picker.pickImage(
-                                      source: ImageSource.gallery,
-                                      maxWidth: 512,
-                                      imageQuality: 85,
-                                    );
-                                    if (image == null) return;
-                                    final bytes = await image.readAsBytes();
-                                    setStateDialog(() {
-                                      newAvatar = _encodeImage(bytes);
-                                    });
-                                  },
-                                  onRemove: () => setStateDialog(() {
-                                    newAvatar = '';
-                                  }),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: nameController,
-                                decoration:
-                                    const InputDecoration(labelText: 'Nama'),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: userController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Username',
-                                ),
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Batal'),
-                            ),
-                            FilledButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(newAvatar);
-                              },
-                              child: const Text('Simpan'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
-                if (result is String) {
-                  await settings.setProfile(
-                    name: nameController.text,
-                    username: userController.text,
-                  );
-                  await settings.setAvatarBase64(result);
-                }
-              },
+            Text(
+              'Pengaturan',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 18),
-            _SectionTitle('Akun'),
+            const SizedBox(height: 12),
+            _GroupHeader('Preferensi Aplikasi'),
             const SizedBox(height: 8),
-            _SectionCard(
+            _SurfaceCard(
               children: [
-                _ValueTile(
-                  leading: Icons.email_outlined,
-                  title: 'Email',
-                  value: auth.email,
-                  onTap: () async {
-                    if (!auth.isLoggedIn) {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                      return;
-                    }
-                    _comingSoon(context, 'Kelola email');
-                  },
+                _SwitchRow(
+                  icon: Icons.dark_mode_outlined,
+                  title: 'Mode Gelap',
+                  value: isDark,
+                  onChanged: (v) => theme.setMode(v ? ThemeMode.dark : ThemeMode.light),
+                ),
+                _NavRow(
+                  icon: Icons.language_outlined,
+                  title: 'Bahasa',
+                  trailing: _LanguagePill(
+                    label: isId ? 'Indonesia' : 'English',
+                    code: isId ? 'ID' : 'EN',
+                  ),
+                  onTap: () => _pickLanguage(context, settings),
+                ),
+                _SwitchRow(
+                  icon: Icons.vibration_outlined,
+                  title: 'Umpan balik haptik',
+                  value: settings.hapticFeedback,
+                  onChanged: settings.setHapticFeedback,
+                ),
+                _SwitchRow(
+                  icon: Icons.spellcheck_outlined,
+                  title: 'Koreksi ejaan otomatis',
+                  value: settings.spellCorrection,
+                  onChanged: settings.setSpellCorrection,
+                ),
+                _NavRow(
+                  icon: Icons.restart_alt,
+                  title: 'Reset Riwayat Chat',
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _confirmResetChat(context, chat),
+                ),
+                _SwitchRow(
+                  icon: Icons.volume_up_outlined,
+                  title: 'Efek Suara',
+                  value: settings.soundEffects,
+                  onChanged: settings.setSoundEffects,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _GroupHeader('Akun'),
+            const SizedBox(height: 8),
+            _SurfaceCard(
+              children: [
+                _NavRow(
+                  icon: Icons.badge_outlined,
+                  title: 'Profil',
+                  trailing: _ProfilePill(name: effectiveName, handle: handle),
+                  onTap: () => _showEditProfile(context),
                 ),
                 if (!auth.isLoggedIn)
-                  _NavTile(
-                    leading: Icons.login,
+                  _NavRow(
+                    icon: Icons.login,
                     title: 'Login / Register',
+                    trailing: const Icon(Icons.chevron_right),
                     onTap: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -144,250 +109,62 @@ class SettingsPage extends StatelessWidget {
                     },
                   )
                 else
-                  _NavTile(
-                    leading: Icons.logout,
+                  _NavRow(
+                    icon: Icons.logout,
                     title: 'Logout',
-                    onTap: auth.logout,
-                  ),
-                _NavTile(
-                  leading: Icons.verified_user_outlined,
-                  title: 'Verifikasi usia',
-                  onTap: () => _comingSoon(context, 'Verifikasi usia'),
-                ),
-                _ValueTile(
-                  leading: Icons.card_membership_outlined,
-                  title: 'Langganan',
-                  value: 'Paket Free',
-                  onTap: () => _comingSoon(context, 'Langganan'),
-                ),
-                _NavTile(
-                  leading: Icons.workspace_premium_outlined,
-                  title: 'Upgrade ke POLA Pro',
-                  titleColor: colorScheme.primary,
-                  onTap: () => _comingSoon(context, 'Upgrade'),
-                ),
-                _NavTile(
-                  leading: Icons.restore_outlined,
-                  title: 'Pulihkan pembelian',
-                  onTap: () => _comingSoon(context, 'Pulihkan pembelian'),
-                ),
-                _NavTile(
-                  leading: Icons.tune_outlined,
-                  title: 'Personalisasi',
-                  onTap: () => _comingSoon(context, 'Personalisasi'),
-                ),
-                _NavTile(
-                  leading: Icons.notifications_outlined,
-                  title: 'Notifikasi',
-                  onTap: () => _comingSoon(context, 'Notifikasi'),
-                ),
-                _NavTile(
-                  leading: Icons.grid_view_outlined,
-                  title: 'Aplikasi',
-                  onTap: () => _comingSoon(context, 'Aplikasi'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _SectionTitle('Aplikasi'),
-            const SizedBox(height: 8),
-            _SectionCard(
-              children: [
-                _ValueTile(
-                  leading: Icons.language_outlined,
-                  title: 'Bahasa aplikasi',
-                  value: settings.appLanguage,
-                  onTap: () => _pickOne(
-                    context,
-                    title: 'Bahasa aplikasi',
-                    current: settings.appLanguage,
-                    options: const ['Indonesia', 'English'],
-                    onSelected: settings.setAppLanguage,
-                  ),
-                ),
-                _ValueTile(
-                  leading: Icons.brightness_4_outlined,
-                  title: 'Penampilan',
-                  value: _themeLabel(theme.mode),
-                  onTap: () => _pickThemeMode(context, theme),
-                ),
-                _ValueTile(
-                  leading: Icons.palette_outlined,
-                  title: 'Warna aksen',
-                  value: _accentLabel(settings.accentIndex),
-                  onTap: () => _pickAccent(context, settings, theme),
-                ),
-                _SwitchTile(
-                  leading: Icons.vibration_outlined,
-                  title: 'Umpan balik haptik',
-                  value: settings.hapticFeedback,
-                  onChanged: settings.setHapticFeedback,
-                ),
-                _SwitchTile(
-                  leading: Icons.spellcheck_outlined,
-                  title: 'Koreksi ejaan secara otomatis',
-                  value: settings.spellCorrection,
-                  onChanged: settings.setSpellCorrection,
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _SectionTitle('Ucapan'),
-            const SizedBox(height: 8),
-            _SectionCard(
-              children: [
-                _ValueTile(
-                  leading: Icons.record_voice_over_outlined,
-                  title: 'Suara',
-                  value: settings.voice,
-                  onTap: () => _pickOne(
-                    context,
-                    title: 'Suara',
-                    current: settings.voice,
-                    options: const ['Arbor', 'Nova', 'Ember', 'Breeze'],
-                    onSelected: settings.setVoice,
-                  ),
-                ),
-                _SwitchTile(
-                  leading: Icons.tune_outlined,
-                  title: 'Mode pisah',
-                  value: settings.splitMode,
-                  onChanged: settings.setSplitMode,
-                ),
-                _SwitchTile(
-                  leading: Icons.play_circle_outline,
-                  title: 'Percakapan latar belakang',
-                  value: settings.backgroundConversation,
-                  onChanged: settings.setBackgroundConversation,
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Text(
-                    'Percakapan latar belakang menjaga percakapan tetap berlangsung '
-                    'di aplikasi lain atau ketika layar Anda mati.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _SectionTitle('Saran'),
-            const SizedBox(height: 8),
-            _SectionCard(
-              children: [
-                _SwitchTile(
-                  leading: Icons.auto_awesome_outlined,
-                  title: 'Selesai otomatis',
-                  value: settings.autoFinish,
-                  onChanged: settings.setAutoFinish,
-                ),
-                _SwitchTile(
-                  leading: Icons.trending_up_outlined,
-                  title: 'Pencarian sedang tren',
-                  value: settings.trendingSearch,
-                  onChanged: settings.setTrendingSearch,
-                ),
-                _SwitchTile(
-                  leading: Icons.next_plan_outlined,
-                  title: 'Saran tindak lanjut',
-                  value: settings.followUpSuggestions,
-                  onChanged: settings.setFollowUpSuggestions,
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _SectionTitle('Tentang'),
-            const SizedBox(height: 8),
-            _SectionCard(
-              children: [
-                _NavTile(
-                  leading: Icons.bug_report_outlined,
-                  title: 'Laporkan bug',
-                  onTap: () => _comingSoon(context, 'Laporkan bug'),
-                ),
-                _NavTile(
-                  leading: Icons.help_outline,
-                  title: 'Pusat Bantuan',
-                  onTap: () => _comingSoon(context, 'Pusat Bantuan'),
-                ),
-                _NavTile(
-                  leading: Icons.description_outlined,
-                  title: 'Syarat Penggunaan',
-                  onTap: () => _comingSoon(context, 'Syarat Penggunaan'),
-                ),
-                _NavTile(
-                  leading: Icons.privacy_tip_outlined,
-                  title: 'Kebijakan Privasi',
-                  onTap: () => _comingSoon(context, 'Kebijakan Privasi'),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Text(
-                    'POLA untuk Android/iOS • v1.0.0',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _SectionCard(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.delete_outline),
-                  title: const Text('Hapus riwayat chat'),
-                  onTap: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Hapus riwayat chat?'),
-                        content: const Text(
-                          'Semua percakapan akan dihapus dari perangkat ini.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('Batal'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Hapus'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (ok == true) {
-                      chat.clearAllConversations();
-                      if (!context.mounted) return;
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      auth.logout();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Riwayat chat dihapus.')),
+                        const SnackBar(content: Text('Anda keluar.')),
                       );
-                    }
-                  },
+                    },
+                  ),
+                _NavRow(
+                  icon: Icons.person_outline,
+                  title: 'Edit Profil',
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showEditProfile(context),
+                ),
+                if (auth.isLoggedIn)
+                  _NavRow(
+                    icon: Icons.lock_outline,
+                    title: 'Ganti Kata Sandi',
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showChangePassword(context),
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (auth.isAdmin)
+                  _NavRow(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'Admin Panel',
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AdminPage()),
+                      );
+                    },
+                  )
+                else
+                  const SizedBox.shrink(),
+                _NavRow(
+                  icon: Icons.info_outline,
+                  title: 'Tentang Aplikasi',
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showAbout(context),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _SectionCard(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Keluar'),
-                  onTap: () {
-                    auth.logout();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Anda keluar.')),
-                    );
-                  },
-                ),
-              ],
+            const SizedBox(height: 10),
+            Center(
+              child: Text(
+                'Versi 1.0.0',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ),
-            const SizedBox(height: 90),
           ],
         );
       },
@@ -395,169 +172,88 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    required this.initials,
-    required this.name,
-    required this.handle,
-    required this.avatarBase64,
-    required this.onEdit,
-  });
-
-  final String initials;
+class _ProfilePill extends StatelessWidget {
+  const _ProfilePill({required this.name, required this.handle});
   final String name;
   final String handle;
-  final String avatarBase64;
-  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
-    final imageBytes = _tryDecodeImage(avatarBase64);
+    final cs = Theme.of(context).colorScheme;
     return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        CircleAvatar(
-          radius: 34,
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          backgroundImage:
-              imageBytes == null ? null : MemoryImage(imageBytes),
-          child: imageBytes != null
-              ? null
-              : Text(
-                  initials,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-        ),
-        const SizedBox(height: 12),
         Text(
           name,
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          handle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
               ),
         ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: onEdit,
-          child: const Text('Edit profil'),
+        Text(
+          handle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
         ),
       ],
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader(this.text);
   final String text;
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .titleSmall
-            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.children});
+class _SurfaceCard extends StatelessWidget {
+  const _SurfaceCard({required this.children});
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: cs.surface.withValues(alpha: 0.82),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: _withDividers(children)),
     );
   }
 }
 
-class _NavTile extends StatelessWidget {
-  const _NavTile({
-    required this.leading,
-    required this.title,
-    required this.onTap,
-    this.titleColor,
-  });
-
-  final IconData leading;
-  final String title;
-  final VoidCallback onTap;
-  final Color? titleColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(leading),
-      title: Text(title, style: TextStyle(color: titleColor)),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
-    );
-  }
-}
-
-class _ValueTile extends StatelessWidget {
-  const _ValueTile({
-    required this.leading,
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
-
-  final IconData leading;
-  final String title;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(leading),
-      title: Text(title),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(Icons.chevron_right),
-        ],
-      ),
-      onTap: onTap,
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  const _SwitchTile({
-    required this.leading,
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    required this.icon,
     required this.title,
     required this.value,
     required this.onChanged,
   });
 
-  final IconData leading;
+  final IconData icon;
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -565,12 +261,329 @@ class _SwitchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SwitchListTile(
-      secondary: Icon(leading),
+      secondary: Icon(icon),
       title: Text(title),
       value: value,
       onChanged: onChanged,
     );
   }
+}
+
+class _NavRow extends StatelessWidget {
+  const _NavRow({
+    required this.icon,
+    required this.title,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget trailing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: trailing,
+      onTap: onTap,
+    );
+  }
+}
+
+class _LanguagePill extends StatelessWidget {
+  const _LanguagePill({required this.label, required this.code});
+  final String label;
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: cs.primary.withValues(alpha: 0.12),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.20)),
+          ),
+          child: Text(
+            code,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+List<Widget> _withDividers(List<Widget> children) {
+  final out = <Widget>[];
+  for (var i = 0; i < children.length; i++) {
+    out.add(children[i]);
+    if (i != children.length - 1) {
+      out.add(const Divider(height: 1));
+    }
+  }
+  return out;
+}
+
+Future<void> _pickLanguage(BuildContext context, dynamic settings) async {
+  final current = settings.appLanguage as String;
+  final picked = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: RadioGroup<String>(
+        groupValue: current,
+        onChanged: (v) => Navigator.of(context).pop(v),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            ListTile(title: Text('Bahasa')),
+            RadioListTile<String>(value: 'Indonesia', title: Text('Indonesia')),
+            RadioListTile<String>(value: 'English', title: Text('English')),
+            SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (picked != null) {
+    await settings.setAppLanguage(picked);
+  }
+}
+
+Future<void> _confirmResetChat(BuildContext context, dynamic chat) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Reset riwayat chat?'),
+      content: const Text('Semua percakapan akan dihapus dari perangkat ini.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Reset'),
+        ),
+      ],
+    ),
+  );
+  if (ok == true) {
+    chat.clearAllConversations();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Riwayat chat sudah di-reset.')),
+    );
+  }
+}
+
+Future<void> _showEditProfile(BuildContext context) async {
+  final auth = AppStateScope.of(context).auth;
+  final settings = AppStateScope.of(context).settings;
+
+  final effectiveName =
+      settings.profileName.isNotEmpty ? settings.profileName : auth.displayName;
+  final handleBase =
+      settings.username.isNotEmpty ? settings.username : auth.email.split('@').first;
+
+  final nameController = TextEditingController(text: effectiveName);
+  final userController = TextEditingController(text: handleBase);
+
+  final result = await showDialog<Object?>(
+    context: context,
+    builder: (context) {
+      var newAvatar = settings.avatarBase64;
+      return StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Edit profil'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _AvatarEditor(
+                initials: _initialsOf(effectiveName),
+                avatarBase64: newAvatar,
+                onPick: () async {
+                  final picker = ImagePicker();
+                  final image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 512,
+                    imageQuality: 85,
+                  );
+                  if (image == null) return;
+                  final bytes = await image.readAsBytes();
+                  setStateDialog(() => newAvatar = _encodeImage(bytes));
+                },
+                onRemove: () => setStateDialog(() => newAvatar = ''),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Nama'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: userController,
+                decoration: const InputDecoration(labelText: 'Username'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(newAvatar),
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  if (result is String) {
+    await settings.setProfile(
+      name: nameController.text,
+      username: userController.text,
+    );
+    await settings.setAvatarBase64(result);
+  }
+}
+
+Future<void> _showChangePassword(BuildContext context) async {
+  final auth = AppStateScope.of(context).auth;
+  if (!auth.isLoggedIn) {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    return;
+  }
+
+  final oldC = TextEditingController();
+  final newC = TextEditingController();
+  final confirmC = TextEditingController();
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Ganti kata sandi'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: oldC,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Kata sandi lama'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: newC,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Kata sandi baru'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: confirmC,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Konfirmasi kata sandi baru'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final oldPass = oldC.text;
+            final newPass = newC.text;
+            if (newPass.isEmpty || newPass != confirmC.text) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Konfirmasi kata sandi tidak cocok.')),
+              );
+              return;
+            }
+            final ok = auth.changePassword(
+              email: auth.email,
+              oldPassword: oldPass,
+              newPassword: newPass,
+            );
+            if (!ok) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Kata sandi lama salah.')),
+              );
+              return;
+            }
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Kata sandi berhasil diperbarui.')),
+            );
+          },
+          child: const Text('Simpan'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _showAbout(BuildContext context) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tentang POLA',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'POLA (Polibatam Assistant) membantu menjawab pertanyaan seputar Polibatam '
+              'seperti beasiswa, akademik, jurusan, laboratorium, dan magang.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Versi 1.0.0',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _AvatarEditor extends StatelessWidget {
@@ -589,13 +602,14 @@ class _AvatarEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bytes = _tryDecodeImage(avatarBase64);
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         Stack(
           children: [
             CircleAvatar(
               radius: 38,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              backgroundColor: cs.primary.withValues(alpha: 0.14),
               backgroundImage: bytes == null ? null : MemoryImage(bytes),
               child: bytes != null
                   ? null
@@ -604,7 +618,7 @@ class _AvatarEditor extends StatelessWidget {
                       style: Theme.of(context)
                           .textTheme
                           .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
             ),
             Positioned(
@@ -628,65 +642,11 @@ class _AvatarEditor extends StatelessWidget {
   }
 }
 
-List<Widget> _withDividers(List<Widget> children) {
-  final out = <Widget>[];
-  for (var i = 0; i < children.length; i++) {
-    out.add(children[i]);
-    if (i != children.length - 1) {
-      out.add(const Divider(height: 1));
-    }
-  }
-  return out;
-}
-
 String _initialsOf(String name) {
   final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
   final letters = parts.take(2).map((p) => p.characters.first).toList();
   if (letters.isEmpty) return 'P';
   return letters.join().toUpperCase();
-}
-
-String _themeLabel(ThemeMode mode) => switch (mode) {
-      ThemeMode.system => 'Sistem',
-      ThemeMode.light => 'Terang',
-      ThemeMode.dark => 'Gelap',
-    };
-
-String _accentLabel(int idx) => switch (idx) {
-      0 => 'Default',
-      1 => 'Blue',
-      2 => 'Green',
-      3 => 'Purple',
-      4 => 'Orange',
-      _ => 'Default',
-    };
-
-Color _accentSeed(int idx) => switch (idx) {
-      1 => const Color(0xFF2563EB),
-      2 => const Color(0xFF16A34A),
-      3 => const Color(0xFF7C3AED),
-      4 => const Color(0xFFF97316),
-      _ => const Color(0xFF005FB8),
-    };
-
-Future<void> _comingSoon(BuildContext context, String title) async {
-  await showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: const Text(
-        'Pengaturan ini saat ini hanya tersedia sebagai preferensi lokal di aplikasi '
-        'dan tidak terhubung ke layanan kampus. Nilai pilihan Anda akan tetap '
-        'tersimpan di perangkat ini.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Tutup'),
-        ),
-      ],
-    ),
-  );
 }
 
 String _encodeImage(List<int> bytes) =>
@@ -702,109 +662,5 @@ Uint8List? _tryDecodeImage(String base64DataUrl) {
     return base64Decode(payload);
   } catch (_) {
     return null;
-  }
-}
-
-Future<void> _pickOne(
-  BuildContext context, {
-  required String title,
-  required String current,
-  required List<String> options,
-  required Future<void> Function(String) onSelected,
-}) async {
-  final picked = await showModalBottomSheet<String>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(title: Text(title)),
-          for (final o in options)
-            RadioListTile<String>(
-              value: o,
-              groupValue: current,
-              onChanged: (v) => Navigator.of(context).pop(v),
-              title: Text(o),
-            ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
-  );
-  if (picked != null) {
-    await onSelected(picked);
-  }
-}
-
-Future<void> _pickThemeMode(BuildContext context, dynamic theme) async {
-  final picked = await showModalBottomSheet<ThemeMode>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const ListTile(title: Text('Penampilan')),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.system,
-            groupValue: theme.mode,
-            onChanged: (v) => Navigator.of(context).pop(v),
-            title: const Text('Sistem'),
-          ),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.light,
-            groupValue: theme.mode,
-            onChanged: (v) => Navigator.of(context).pop(v),
-            title: const Text('Terang'),
-          ),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.dark,
-            groupValue: theme.mode,
-            onChanged: (v) => Navigator.of(context).pop(v),
-            title: const Text('Gelap'),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
-  );
-  if (picked != null) {
-    await theme.setMode(picked);
-  }
-}
-
-Future<void> _pickAccent(
-  BuildContext context,
-  dynamic settings,
-  dynamic theme,
-) async {
-  final picked = await showModalBottomSheet<int>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const ListTile(title: Text('Warna aksen')),
-          for (final idx in const [0, 1, 2, 3, 4])
-            RadioListTile<int>(
-              value: idx,
-              groupValue: settings.accentIndex,
-              onChanged: (v) => Navigator.of(context).pop(v),
-              title: Text(_accentLabel(idx)),
-              secondary: CircleAvatar(
-                radius: 10,
-                backgroundColor: _accentSeed(idx),
-              ),
-            ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
-  );
-  if (picked != null) {
-    await settings.setAccentIndex(picked);
-    await theme.setSeedColor(_accentSeed(picked));
   }
 }

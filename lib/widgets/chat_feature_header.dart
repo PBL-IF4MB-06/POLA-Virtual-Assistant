@@ -8,164 +8,156 @@ class ChatFeatureHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'POLA - Polibatam Assistant',
-          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.surface.withValues(alpha: 0.85),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Icon(Icons.smart_toy_outlined, size: 18, color: cs.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: cs.surface.withValues(alpha: 0.85),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Text(
+                  'Halo, ada yang bisa saya bantu?',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Tanya seputar PBL, lab, beasiswa, peraturan akademik, dan kehidupan kampus.',
-          style: textTheme.bodySmall,
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _FeatureCard(
-                icon: Icons.groups,
-                title: 'PBL & Tim Proyek',
-                subtitle: 'Cari rekan tim lintas jurusan dan atur milestone.',
-                color: Colors.blue[50],
-                onTap: () => onSelectQuickPrompt(
-                  'Saya ingin mengatur proyek PBL (Project Based Learning). '
-                  'Tolong bantu: (1) rekomendasi struktur milestone, '
-                  '(2) saran pembagian peran tim lintas jurusan, '
-                  '(3) checklist laporan akhir PBL.',
-                ),
-              ),
-              _FeatureCard(
-                icon: Icons.science,
-                title: 'Lab & Fasilitas',
-                subtitle: 'Cek ketersediaan lab dan panduan alat.',
-                color: Colors.green[50],
-                onTap: () => onSelectQuickPrompt(
-                  'Tolong bantu saya soal fasilitas kampus: '
-                  'cara meminjam lab, status ketersediaan lab teknis, '
-                  'dan panduan singkat penggunaan alat di lab Polibatam.',
-                ),
-              ),
-              _FeatureCard(
-                icon: Icons.school,
-                title: 'Beasiswa & Magang',
-                subtitle: 'Info beasiswa dan magang mitra Polibatam.',
-                color: Colors.orange[50],
-                onTap: () => onSelectQuickPrompt(
-                  'Saya ingin informasi beasiswa internal dan magang '
-                  'yang bekerja sama dengan Polibatam. Tolong jelaskan '
-                  'syarat umum, cara daftar, dan contoh perusahaan mitra.',
-                ),
-              ),
-              _FeatureCard(
-                icon: Icons.menu_book,
-                title: 'Peraturan Akademik',
-                subtitle: 'FAQ kehadiran, cuti, ujian, dan lain-lain.',
-                color: Colors.purple[50],
-                onTap: () => onSelectQuickPrompt(
-                  'Jelaskan secara ringkas peraturan akademik penting di Polibatam: '
-                  'batas minimal kehadiran UAS, prosedur cuti akademik, dan aturan remedial.',
-                ),
-              ),
-            ],
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            color: cs.surface.withValues(alpha: 0.82),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+          ),
+          child: Text(
+            'Selamat datang di Polibatam Assistant.\n'
+            'Saya POLA, AI asisten virtual Polibatam.\n'
+            'Silakan tanyakan pertanyaan seputar kampus Polibatam, seperti beasiswa, akademik, jurusan, laboratorium, atau magang.',
+            style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ),
         const SizedBox(height: 12),
-        _SuggestionChips(onSelect: onSelectQuickPrompt),
+        Text(
+          'Quick Prompts',
+          style: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _QuickPrompt(
+              icon: Icons.school_outlined,
+              label: 'Beasiswa',
+              onTap: () => onSelectQuickPrompt(
+                'Berikut adalah informasi beasiswa di Polibatam.',
+              ),
+            ),
+            _QuickPrompt(
+              icon: Icons.menu_book_outlined,
+              label: 'Akademik',
+              onTap: () => onSelectQuickPrompt(
+                'Ringkas peraturan akademik penting (kehadiran, cuti, remedial) dan cantumkan sumber.',
+              ),
+            ),
+            _QuickPrompt(
+              icon: Icons.apartment_outlined,
+              label: 'Jurusan',
+              onTap: () => onSelectQuickPrompt(
+                'Apa saja jurusan/prodi yang tersedia di Polibatam? Sertakan sumber.',
+              ),
+            ),
+            _QuickPrompt(
+              icon: Icons.science_outlined,
+              label: 'Laboratorium',
+              onTap: () => onSelectQuickPrompt(
+                'Bagaimana prosedur peminjaman lab? Sertakan aturan dan sumber.',
+              ),
+            ),
+            _QuickPrompt(
+              icon: Icons.work_outline,
+              label: 'Magang',
+              onTap: () => onSelectQuickPrompt(
+                'Info magang/MBKM terkait Polibatam: alur, syarat, dan sumber.',
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _SuggestionChips extends StatelessWidget {
-  const _SuggestionChips({required this.onSelect});
-
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final suggestions = <String>[
-      'Jadwal kuliah dan PBL saya minggu ini bagaimana?',
-      'Apa saja beasiswa internal Polibatam yang masih dibuka?',
-      'Bagaimana prosedur peminjaman Lab untuk PBL?',
-      'Bagaimana prosedur cuti akademik di Polibatam?',
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: suggestions
-          .map(
-            (s) => ActionChip(
-              label: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onPressed: () => onSelect(s),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
+class _QuickPrompt extends StatelessWidget {
+  const _QuickPrompt({
     required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
+    required this.label,
     required this.onTap,
   });
 
   final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color? color;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 12),
-      child: Material(
-        color: color ?? Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.white,
-                  child: Icon(icon, size: 18),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style:
-                      textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: textTheme.bodySmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: cs.surface.withValues(alpha: 0.82),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ),
         ),
       ),

@@ -4,11 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeState extends ChangeNotifier {
   ThemeState();
 
-  static const _key = 'pola_theme_mode_v1';
-  static const _seedKey = 'pola_theme_seed_v1';
+  static const _key = 'pola_theme_mode_v7';
+  static const _seedKey = 'pola_theme_seed_v7';
 
   ThemeMode _mode = ThemeMode.light;
-  Color _seedColor = const Color(0xFF005FB8);
+  Color _seedColor = const Color(0xFF2F6FE4);
 
   ThemeMode get mode => _mode;
   Color get seedColor => _seedColor;
@@ -49,11 +49,11 @@ class ThemeState extends ChangeNotifier {
   }
 
   Future<void> setSeedColor(Color color) async {
-    if (color.value == _seedColor.value) return;
+    if (color.toARGB32() == _seedColor.toARGB32()) return;
     _seedColor = color;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_seedKey, color.value);
+    await prefs.setInt(_seedKey, color.toARGB32());
   }
 }
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app/app_state_scope.dart';
+import 'chat_page.dart';
 import 'settings_page.dart';
-import '../widgets/chat_popup.dart';
 import '../widgets/chat_feature_header.dart';
 import '../widgets/chat_launcher_fab.dart';
 
@@ -49,9 +49,9 @@ class _HomeShellState extends State<HomeShell> {
             ),
             actions: [
               IconButton(
-                tooltip: 'Open chat',
-                onPressed: () => _openChatPopup(context),
-                icon: const Icon(Icons.open_in_new),
+                tooltip: 'Buka chat',
+                onPressed: () => _openChatFullScreen(context),
+                icon: const Icon(Icons.chat_bubble_outline),
               ),
             ],
           ),
@@ -74,11 +74,11 @@ class _HomeShellState extends State<HomeShell> {
                 chat.renameConversation(chat.activeConversation.id, newTitle),
           ),
           body: _ChatLanding(
-            onOpenChat: () => _openChatPopup(context),
+            onOpenChat: () => _openChatFullScreen(context),
           ),
           floatingActionButton: ChatLauncherFab(
             hasUnread: hasUnread,
-            onPressed: () => _openChatPopup(context),
+            onPressed: () => _openChatFullScreen(context),
             onLongPress: () => _showChatQuickActions(context),
           ),
         );
@@ -86,23 +86,32 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Future<void> _openChatPopup(BuildContext context) async {
+  Future<void> _openChatFullScreen(BuildContext context) async {
     final chat = AppStateScope.of(context).chat;
-    await showChatPopup(
-      context,
-      onOpened: () {
-        setState(() {
-          _lastChatSeenAt = DateTime.now();
-          _lastSeenMessageId = chat.activeLastMessageId;
-        });
-      },
-      onClosed: () {
-        setState(() {
-          _lastChatSeenAt = DateTime.now();
-          _lastSeenMessageId = chat.activeLastMessageId;
-        });
-      },
+    setState(() {
+      _lastChatSeenAt = DateTime.now();
+      _lastSeenMessageId = chat.activeLastMessageId;
+    });
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('POLA Chat'),
+            leading: IconButton(
+              tooltip: 'Tutup',
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close),
+            ),
+          ),
+          body: const ChatPage(showFeatureHeader: true),
+        ),
+      ),
     );
+    if (!mounted) return;
+    setState(() {
+      _lastChatSeenAt = DateTime.now();
+      _lastSeenMessageId = chat.activeLastMessageId;
+    });
   }
 
   Future<void> _openSettingsSheet(BuildContext context) async {
@@ -203,14 +212,14 @@ class _HomeShellState extends State<HomeShell> {
       },
     );
 
-    if (!mounted || action == null) return;
+    if (!context.mounted || action == null) return;
     switch (action) {
       case 'open':
-        await _openChatPopup(context);
+        await _openChatFullScreen(context);
         break;
       case 'new':
         chat.startNewConversation();
-        await _openChatPopup(context);
+        await _openChatFullScreen(context);
         break;
       case 'settings':
         await _openSettingsSheet(context);
@@ -244,12 +253,12 @@ class _ChatLanding extends StatelessWidget {
             FilledButton.icon(
               onPressed: onOpenChat,
               icon: const Icon(Icons.chat_bubble_rounded),
-              label: const Text('Buka chat (popup)'),
+              label: const Text('Buka chat'),
             ),
             const SizedBox(height: 12),
             Text(
-              'Chat akan muncul sebagai popup bubble di kanan bawah, '
-              'jadi tidak memenuhi layar di HP.',
+              'Chat dibuka di layar penuh. Gunakan tombol tutup atau gestur '
+              'kembali untuk kembali ke beranda.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -293,8 +302,8 @@ class _ChatsDrawer extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.primary.withOpacity(0.9),
-                    Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
                   ],
                 ),
               ),

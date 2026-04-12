@@ -36,7 +36,7 @@ class KnowledgeBase {
               KnowledgeSource(
                 id: 'desain-umum',
                 title: 'Desain Umum Sistem (POLA)',
-                assetPath: 'assets/keterangan_desain_umum_sistem.txt',
+                assetPath: 'brand/keterangan_desain_umum_sistem.txt',
               ),
             ];
 

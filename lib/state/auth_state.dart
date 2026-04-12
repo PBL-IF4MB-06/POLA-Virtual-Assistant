@@ -1,10 +1,21 @@
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../config/google_oauth_config.dart';
 
 class AuthState extends ChangeNotifier {
   static const _kUsers = 'pola_auth_users_v7'; // email|password
   static const _kActiveEmail = 'pola_auth_active_email_v7';
   static const _kAdmins = 'pola_auth_admins_v1'; // list of admin emails
+
+  /// Sentinel password for accounts created only via Google Sign-In (OAuth 2.0).
+  static const oauthGooglePasswordPlaceholder = '__oauth_google__';
+
+  static const List<String> _googleScopes = <String>[
+    'email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+  ];
 
   // Demo-only bootstrap admin (local auth).
   static const String demoAdminEmail = 'admin@pola.app';
@@ -15,6 +26,8 @@ class AuthState extends ChangeNotifier {
   String? _email;
   final Map<String, String> _users = {};
   final Set<String> _admins = <String>{};
+  bool _sessionUsedGoogle = false;
+  GoogleSignIn? _googleSignInCache;
 
   bool get isLoggedIn => _isLoggedIn;
   String get displayName => _displayName ?? 'Guest';
@@ -51,6 +64,8 @@ class AuthState extends ChangeNotifier {
 
     final active = prefs.getString(_kActiveEmail);
     if (active != null && active.isNotEmpty && _users.containsKey(active)) {
+      final storedPass = _users[active];
+      _sessionUsedGoogle = storedPass == oauthGooglePasswordPlaceholder;
       _setLoggedInInternal(active, persist: false);
     } else {
       _continueAsGuestInternal(persist: false);
@@ -58,6 +73,7 @@ class AuthState extends ChangeNotifier {
   }
 
   void continueAsGuest() {
+    _sessionUsedGoogle = false;
     _continueAsGuestInternal(persist: true);
   }
 
@@ -72,10 +88,78 @@ class AuthState extends ChangeNotifier {
   }
 
   void login({required String email}) {
+    _sessionUsedGoogle = false;
     _setLoggedIn(email.trim());
   }
 
-  void logout() {
+  GoogleSignIn _googleSignIn() {
+    return _googleSignInCache ??= GoogleSignIn(
+      scopes: _googleScopes,
+      clientId: _googleOAuthClientId(),
+      serverClientId: GoogleOauthConfig.serverClientId.isNotEmpty
+          ? GoogleOauthConfig.serverClientId
+          : null,
+    );
+  }
+
+  /// Web / desktop: OAuth **Web client** ID. Android / iOS: prefer [GoogleOauthConfig.serverClientId].
+  static String? _googleOAuthClientId() {
+    final id = GoogleOauthConfig.webClientId;
+    if (id.isEmpty) return null;
+    if (kIsWeb) return id;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.windows:
+      case TargetPlatform.macOS:
+      case TargetPlatform.linux:
+        return id;
+      default:
+        return null;
+    }
+  }
+
+  /// Returns `null` on success, or a short Indonesian error message.
+  Future<String?> loginWithGoogle() async {
+    if (kIsWeb && GoogleOauthConfig.webClientId.isEmpty) {
+      return 'OAuth web belum dikonfigurasi. Jalankan aplikasi dengan '
+          '--dart-define=GOOGLE_WEB_CLIENT_ID=... (lihat lib/config/google_oauth_config.dart).';
+    }
+    try {
+      final account = await _googleSignIn().signIn();
+      if (account == null) {
+        return 'Masuk dengan Google dibatalkan.';
+      }
+      final email = account.email.trim();
+      if (email.isEmpty) {
+        return 'Akun Google tidak menyediakan alamat email.';
+      }
+      if (!_users.containsKey(email)) {
+        _users[email] = oauthGooglePasswordPlaceholder;
+        await _persistUsersAsync();
+      }
+      final dn = account.displayName?.trim();
+      _setLoggedInInternal(
+        email,
+        persist: true,
+        displayName: (dn != null && dn.isNotEmpty) ? dn : null,
+      );
+      _sessionUsedGoogle = true;
+      return null;
+    } catch (e, st) {
+      debugPrint('loginWithGoogle failed: $e\n$st');
+      return 'Gagal masuk dengan Google. Pastikan OAuth client ID sudah benar '
+          'dan SHA-1 / bundle ID sudah didaftarkan di Google Cloud Console.';
+    }
+  }
+
+  Future<void> logout() async {
+    if (_sessionUsedGoogle) {
+      try {
+        await _googleSignIn().signOut();
+      } catch (e, st) {
+        debugPrint('Google signOut: $e\n$st');
+      }
+      _sessionUsedGoogle = false;
+    }
     continueAsGuest();
   }
 
@@ -88,6 +172,7 @@ class AuthState extends ChangeNotifier {
     if (stored == null || stored != password) {
       return false;
     }
+    _sessionUsedGoogle = false;
     _setLoggedInInternal(key, persist: true);
     return true;
   }
@@ -99,6 +184,7 @@ class AuthState extends ChangeNotifier {
     final key = email.trim();
     if (key.isEmpty || password.isEmpty) return false;
     if (_users.containsKey(key)) return false;
+    _sessionUsedGoogle = false;
     _users[key] = password;
     _persistUsers();
     _setLoggedInInternal(key, persist: true);
@@ -142,11 +228,17 @@ class AuthState extends ChangeNotifier {
     _setLoggedInInternal(email, persist: true);
   }
 
-  void _setLoggedInInternal(String email, {required bool persist}) {
+  void _setLoggedInInternal(
+    String email, {
+    required bool persist,
+    String? displayName,
+  }) {
     if (email.isEmpty) return;
     _isLoggedIn = true;
     _email = email;
-    _displayName = email.split('@').first;
+    final dn = displayName?.trim();
+    _displayName =
+        (dn != null && dn.isNotEmpty) ? dn : email.split('@').first;
     // First-time bootstrap: jika belum ada admin sama sekali, jadikan akun pertama admin.
     if (_admins.isEmpty) {
       _admins.add(email);
@@ -165,5 +257,11 @@ class AuthState extends ChangeNotifier {
       final list = _users.entries.map((e) => '${e.key}|${e.value}').toList();
       prefs.setStringList(_kUsers, list);
     });
+  }
+
+  Future<void> _persistUsersAsync() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = _users.entries.map((e) => '${e.key}|${e.value}').toList();
+    await prefs.setStringList(_kUsers, list);
   }
 }

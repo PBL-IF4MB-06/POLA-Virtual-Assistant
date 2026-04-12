@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../config/ai_backend_dev.dart';
 import '../models/chat_message.dart';
 import '../models/bot_reply.dart';
 import '../models/conversation.dart';
@@ -18,7 +19,7 @@ class ChatState extends ChangeNotifier {
   })  : _settings = settings,
         _bot = bot ?? PolaBot(),
         _storage = storage ?? const ChatStorage() {
-    _conversations.add(_newConversation(seedWelcome: true));
+    _conversations.add(_newConversation());
     _activeConversationId = _conversations.first.id;
   }
 
@@ -52,7 +53,7 @@ class ChatState extends ChangeNotifier {
   }
 
   void startNewConversation() {
-    final convo = _newConversation(seedWelcome: true);
+    final convo = _newConversation();
     _conversations.insert(0, convo);
     _activeConversationId = convo.id;
     notifyListeners();
@@ -88,7 +89,7 @@ class ChatState extends ChangeNotifier {
   void clearAllConversations() {
     _conversations
       ..clear()
-      ..add(_newConversation(seedWelcome: true));
+      ..add(_newConversation());
     _activeConversationId = _conversations.first.id;
     _isBotTyping = false;
     notifyListeners();
@@ -132,6 +133,8 @@ class ChatState extends ChangeNotifier {
         webSearchEnabled: _settings.webSearchEnabled,
         googleApiKey: _settings.googleCseApiKey,
         googleCx: _settings.googleCseCx,
+        aiBackendBaseUrl: aiBackendUrlOrDevDefault(_settings.aiBackendBaseUrl),
+        geminiApiKey: _settings.geminiApiKey,
       );
     } catch (_) {
       reply = const BotReply(
@@ -177,20 +180,10 @@ class ChatState extends ChangeNotifier {
     return b.toString().trim();
   }
 
-  Conversation _newConversation({required bool seedWelcome}) {
-    final convo = Conversation(id: _id(), title: 'New chat');
-    if (seedWelcome) {
-      convo.messages.add(
-        ChatMessage(
-          id: _id(),
-          sender: Sender.bot,
-          text:
-              'Halo, saya POLA – asisten virtual Polibatam. Silakan tanyakan seputar jadwal, biaya, pendaftaran, atau kontak kampus.',
-          createdAt: DateTime.now(),
-        ),
-      );
-    }
-    return convo;
+  /// Intro Polibatam ditampilkan sebagai satu bubble UI ([ChatFeatureHeader]), bukan pesan bot —
+  /// supaya tidak dobel dengan bubble sambutan.
+  Conversation _newConversation() {
+    return Conversation(id: _id(), title: 'New chat');
   }
 
   String _titleFrom(String message) {

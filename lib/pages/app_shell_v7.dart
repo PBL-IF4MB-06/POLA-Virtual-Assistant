@@ -4,307 +4,266 @@ import '../app/app_state_scope.dart';
 import '../ui/widgets/pola_background.dart';
 import '../widgets/pola_logo.dart';
 import 'chat_page.dart';
-import 'chat_search_delegate.dart';
 import 'settings_page.dart';
 
-/// UI v7 mengikuti mockup: topbar POLA + halaman:
-/// - Home (chat)
-/// - Riwayat (list chat + quick prompts) -> sementara pakai Home + drawer history internal chat state
-/// - Pengaturan
-class AppShellV7 extends StatefulWidget {
+/// Shell utama: chat penuh + drawer kiri (ala ChatGPT) untuk riwayat & pengaturan.
+class AppShellV7 extends StatelessWidget {
   const AppShellV7({super.key});
-
-  @override
-  State<AppShellV7> createState() => _AppShellV7State();
-}
-
-class _AppShellV7State extends State<AppShellV7> {
-  int _index = 0;
 
   @override
   Widget build(BuildContext context) {
     final chat = AppStateScope.of(context).chat;
 
-    final pages = const [
-      _HomeChatV7(),
-      _HistoryV7(),
-      _SettingsV7Proxy(),
-    ];
-
     return PolaBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _TopBarV7(
-                onSearch: () async {
-                  final messages = chat.activeConversation.messages;
-                  await showSearch(
-                    context: context,
-                    delegate: ChatSearchDelegate(messages: messages),
-                  );
-                },
+      child: AnimatedBuilder(
+        animation: chat,
+        builder: (context, _) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            drawer: const _PolaDrawer(),
+            body: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _TopBarV7(),
+                  const Expanded(
+                    child: ChatPage(showFeatureHeader: true),
+                  ),
+                ],
               ),
-              Expanded(
-                child: AnimatedBuilder(
-                  animation: chat,
-                  builder: (context, _) {
-                    return IndexedStack(index: _index, children: pages);
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline),
-              selectedIcon: Icon(Icons.chat_bubble_rounded),
-              label: 'Chat',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.history_outlined),
-              selectedIcon: Icon(Icons.history_rounded),
-              label: 'Riwayat',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings),
-              label: 'Pengaturan',
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
 
 class _TopBarV7 extends StatelessWidget {
-  const _TopBarV7({required this.onSearch});
-
-  final VoidCallback onSearch;
+  const _TopBarV7();
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      padding: const EdgeInsets.fromLTRB(4, 6, 16, 6),
       child: Row(
         children: [
-          const PolaLogo(size: 30),
-          const SizedBox(width: 10),
-          Text(
-            'POLA',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.4,
-                ),
+          Builder(
+            builder: (context) => IconButton(
+              tooltip: 'Menu',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: const Icon(Icons.menu_rounded),
+            ),
           ),
-          const Spacer(),
-          IconButton(
-            tooltip: 'Cari',
-            onPressed: onSearch,
-            icon: Icon(Icons.search, color: cs.onSurfaceVariant),
-          ),
+          const PolaLogo(size: 44),
         ],
       ),
     );
   }
 }
 
-class _HomeChatV7 extends StatelessWidget {
-  const _HomeChatV7();
+class _PolaDrawer extends StatelessWidget {
+  const _PolaDrawer();
 
-  @override
-  Widget build(BuildContext context) {
-    return const ChatPage(showFeatureHeader: true);
-  }
-}
-
-class _HistoryV7 extends StatefulWidget {
-  const _HistoryV7();
-
-  @override
-  State<_HistoryV7> createState() => _HistoryV7State();
-}
-
-class _HistoryV7State extends State<_HistoryV7> {
-  final TextEditingController _q = TextEditingController();
-
-  @override
-  void dispose() {
-    _q.dispose();
-    super.dispose();
+  static void _closeDrawer(BuildContext context) {
+    final nav = Navigator.maybeOf(context);
+    if (nav?.canPop() == true) nav!.pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final chat = AppStateScope.of(context).chat;
     final cs = Theme.of(context).colorScheme;
-    return AnimatedBuilder(
-      animation: chat,
-      builder: (context, _) {
-        final convos = chat.conversations;
-        final query = _q.text.trim().toLowerCase();
-        final filtered = query.isEmpty
-            ? convos
-            : convos.where((c) {
-                final t = c.title.toLowerCase();
-                final last = (c.lastMessage?.text ?? '').toLowerCase();
-                return t.contains(query) || last.contains(query);
-              }).toList();
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: cs.surface.withValues(alpha: 0.82),
-                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.history_rounded, color: cs.primary),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Riwayat Chat',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Drawer(
+      backgroundColor: cs.surface,
+      surfaceTintColor: Colors.transparent,
+      child: SafeArea(
+        child: AnimatedBuilder(
+          animation: chat,
+          builder: (context, _) {
+            final convos = chat.conversations;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
+                  child: Row(
+                    children: [
+                      const PolaLogo(size: 52),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Tutup',
+                        onPressed: () => _closeDrawer(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () {
+                        chat.startNewConversation();
+                        _closeDrawer(context);
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      label: const Text('Chat baru'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Riwayat',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
                         ),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'New chat',
-                    onPressed: chat.startNewConversation,
-                    icon: const Icon(Icons.add_circle_outline),
-                  ),
-                  IconButton(
-                    tooltip: 'Hapus semua',
-                    onPressed: convos.isEmpty
-                        ? null
-                        : () async {
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Hapus semua riwayat?'),
-                                content: const Text(
-                                  'Semua percakapan akan dihapus dari perangkat ini.',
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: convos.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              'Belum ada percakapan.',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                          itemCount: convos.length,
+                          itemBuilder: (context, i) {
+                            final c = convos[i];
+                            final active = chat.activeConversation.id == c.id;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Material(
+                                color: active
+                                    ? cs.primary.withValues(alpha: isDark ? 0.18 : 0.14)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                child: ListTile(
+                                  dense: true,
+                                  visualDensity: VisualDensity.compact,
+                                  title: Text(
+                                    c.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                        ),
+                                  ),
+                                  subtitle: Text(
+                                    c.lastMessage?.text.trim().isNotEmpty == true
+                                        ? c.lastMessage!.text.trim()
+                                        : '—',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                  ),
+                                  trailing: convos.length <= 1
+                                      ? null
+                                      : PopupMenuButton<String>(
+                                          icon: Icon(
+                                            Icons.more_horiz_rounded,
+                                            color: cs.onSurfaceVariant,
+                                            size: 20,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          onSelected: (v) {
+                                            if (v == 'delete') {
+                                              chat.deleteConversation(c.id);
+                                            }
+                                          },
+                                          itemBuilder: (context) => const [
+                                            PopupMenuItem<String>(
+                                              value: 'delete',
+                                              child: Text('Hapus chat'),
+                                            ),
+                                          ],
+                                        ),
+                                  onTap: () {
+                                    chat.setActiveConversation(c.id);
+                                    _closeDrawer(context);
+                                  },
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(context).pop(false),
-                                    child: const Text('Batal'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.of(context).pop(true),
-                                    child: const Text('Hapus'),
-                                  ),
-                                ],
                               ),
                             );
-                            if (ok == true) chat.clearAllConversations();
                           },
-                    icon: const Icon(Icons.delete_sweep_outlined),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _q,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Cari riwayat...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: query.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          _q.clear();
-                          setState(() {});
-                        },
-                        icon: const Icon(Icons.clear),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (filtered.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 18, bottom: 10),
-                child: Text(
-                  convos.isEmpty
-                      ? 'Belum ada riwayat chat. Mulai chat dulu ya.'
-                      : 'Tidak ada yang cocok dengan pencarian.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                        ),
                 ),
-              )
-            else
-              for (final c in filtered) ...[
-                Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: cs.surface.withValues(alpha: 0.82),
-                    border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Dismissible(
-                    key: ValueKey('convo_${c.id}'),
-                    direction: convos.length <= 1
-                        ? DismissDirection.none
-                        : DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 16),
-                      color: cs.error.withValues(alpha: 0.12),
-                      child: Icon(Icons.delete_outline, color: cs.error),
+                const Divider(height: 1),
+                if (convos.isNotEmpty)
+                  ListTile(
+                    dense: true,
+                    leading: Icon(Icons.delete_sweep_outlined, color: cs.error),
+                    title: Text(
+                      'Hapus semua riwayat',
+                      style: TextStyle(color: cs.error, fontWeight: FontWeight.w600),
                     ),
-                    onDismissed: (_) => chat.deleteConversation(c.id),
-                    child: ListTile(
-                      leading: const PolaLogo(size: 28),
-                      title: Text(
-                        c.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
+                    onTap: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Hapus semua riwayat?'),
+                          content: const Text(
+                            'Semua percakapan akan dihapus dari perangkat ini.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Batal'),
                             ),
-                      ),
-                      subtitle: Text(
-                        c.lastMessage?.text.trim().isNotEmpty == true
-                            ? c.lastMessage!.text.trim()
-                            : '—',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => chat.setActiveConversation(c.id),
-                    ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Hapus'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok == true && context.mounted) {
+                        chat.clearAllConversations();
+                      }
+                    },
                   ),
+                ListTile(
+                  dense: true,
+                  leading: Icon(Icons.settings_outlined, color: cs.onSurfaceVariant),
+                  title: const Text('Pengaturan'),
+                  onTap: () async {
+                    final nav = Navigator.of(context);
+                    nav.pop();
+                    await nav.push<void>(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SettingsPage(),
+                      ),
+                    );
+                  },
                 ),
+                SizedBox(height: MediaQuery.paddingOf(context).bottom),
               ],
-          ],
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }
-
-class _SettingsV7Proxy extends StatelessWidget {
-  const _SettingsV7Proxy();
-
-  @override
-  Widget build(BuildContext context) {
-    // Reuse existing settings logic, UI will be redesigned next.
-    return const SettingsPage();
-  }
-}
-

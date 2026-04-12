@@ -29,7 +29,7 @@ class DashboardPage extends StatelessWidget {
                 pinned: true,
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
-                title: const PolaLogo(size: 34, showText: true),
+                title: const PolaLogo(size: 48),
                 actions: [
                   _PillIconButton(
                     tooltip: 'Buka Copilot',
@@ -224,7 +224,7 @@ class _HeroCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const PolaLogo(size: 48),
+          const PolaLogo(size: 72),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

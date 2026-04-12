@@ -4,7 +4,6 @@ import '../app/app_state_scope.dart';
 import '../ui/theme/pola_tokens.dart';
 import '../ui/widgets/pola_background.dart';
 import 'chat_page.dart';
-import 'chat_search_delegate.dart';
 
 class CopilotPage extends StatelessWidget {
   const CopilotPage({super.key});
@@ -26,13 +25,6 @@ class CopilotPage extends StatelessWidget {
                 child: _TopBar(
                   title: title,
                   onNew: chat.startNewConversation,
-                  onSearch: () async {
-                    final convo = chat.activeConversation;
-                    await showSearch(
-                      context: context,
-                      delegate: ChatSearchDelegate(messages: convo.messages),
-                    );
-                  },
                   onClear: chat.clearAllConversations,
                 ),
               ),
@@ -63,7 +55,7 @@ class CopilotPage extends StatelessWidget {
                 child: ChatPage(
                   showFeatureHeader: false,
                   emptyHint:
-                      'Tanyakan apa saja. Aktifkan Google CSE di Settings untuk sources resmi.',
+                      'Tanyakan seputar Polibatam. Web (Google CSE) hanya dipakai jika Anda menyebut Polibatam di pertanyaan.',
                 ),
               ),
               const SizedBox(height: PolaTokens.r12),
@@ -79,13 +71,11 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.title,
     required this.onNew,
-    required this.onSearch,
     required this.onClear,
   });
 
   final String title;
   final VoidCallback onNew;
-  final VoidCallback onSearch;
   final VoidCallback onClear;
 
   @override
@@ -134,8 +124,6 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         _PillButton(icon: Icons.add, tooltip: 'New', onTap: onNew),
-        const SizedBox(width: 8),
-        _PillButton(icon: Icons.search, tooltip: 'Search', onTap: onSearch),
         const SizedBox(width: 8),
         _PillButton(
           icon: Icons.delete_sweep_outlined,

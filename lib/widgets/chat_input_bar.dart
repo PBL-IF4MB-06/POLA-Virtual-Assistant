@@ -6,7 +6,7 @@ class ChatInputBar extends StatefulWidget {
     super.key,
     required this.onSend,
     required this.onSendAttachments,
-    this.hintText = 'Tanyakan informasi kampus...',
+    this.hintText = 'Tulis pertanyaan…',
   });
 
   final String hintText;
@@ -93,74 +93,89 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = cs.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.5);
+    final fillColor = cs.surfaceContainerHighest.withValues(alpha: isDark ? 0.35 : 0.55);
 
     return SafeArea(
       top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        child: Container(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            color: colorScheme.surface.withValues(alpha: 0.86),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(26),
+            color: fillColor,
+            border: Border.all(color: borderColor, width: 1),
           ),
-          child: Row(
-            children: [
-              const SizedBox(width: 6),
-              IconButton(
-                tooltip: 'Lampiran',
-                onPressed: _pickAttachment,
-                icon: const Icon(Icons.add_circle_outline),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _send(),
-                  onChanged: (v) {
-                    final ok = v.trim().isNotEmpty;
-                    if (ok != _canSend) setState(() => _canSend = ok);
-                  },
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: 'Tulis pesan...',
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 14,
+          child: Material(
+            type: MaterialType.transparency,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(25),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Lampiran',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 44, minHeight: 44),
+                    style: IconButton.styleFrom(
+                      foregroundColor: cs.onSurfaceVariant,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: _pickAttachment,
+                    icon: const Icon(Icons.add_rounded, size: 22),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      textInputAction: TextInputAction.newline,
+                      textCapitalization: TextCapitalization.sentences,
+                      onSubmitted: (_) => _send(),
+                      onChanged: (v) {
+                        final ok = v.trim().isNotEmpty;
+                        if (ok != _canSend) setState(() => _canSend = ok);
+                      },
+                      minLines: 1,
+                      maxLines: 5,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            height: 1.35,
+                            fontWeight: FontWeight.w400,
+                          ),
+                      decoration: InputDecoration(
+                        hintText: widget.hintText,
+                        hintStyle: TextStyle(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.65),
+                          fontWeight: FontWeight.w400,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        filled: false,
+                        contentPadding: const EdgeInsets.fromLTRB(0, 10, 8, 10),
+                      ),
                     ),
                   ),
-                ),
+                  IconButton(
+                    tooltip: 'Kirim',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 44, minHeight: 44),
+                    style: IconButton.styleFrom(
+                      foregroundColor: cs.primary,
+                      disabledForegroundColor:
+                          cs.onSurfaceVariant.withValues(alpha: 0.35),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: _canSend ? _send : null,
+                    icon: const Icon(Icons.arrow_upward_rounded, size: 20),
+                  ),
+                ],
               ),
-              IconButton(
-                tooltip: 'Voice',
-                onPressed: null, // mockup-like (placeholder, disabled)
-                icon: const Icon(Icons.mic_none_rounded),
-              ),
-              const SizedBox(width: 2),
-              Container(
-                margin: const EdgeInsets.only(right: 6),
-                child: IconButton.filled(
-                  tooltip: 'Send',
-                  onPressed: _canSend ? _send : null,
-                  icon: const Icon(Icons.send_rounded),
-                  color: colorScheme.onPrimary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

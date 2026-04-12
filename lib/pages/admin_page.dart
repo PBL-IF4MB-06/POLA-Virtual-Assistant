@@ -176,7 +176,7 @@ class _AdminPageState extends State<AdminPage> {
           surfaceTintColor: Colors.transparent,
           title: Row(
             children: [
-              const PolaLogo(size: 28),
+              const PolaLogo(size: 40),
               const SizedBox(width: 10),
               const Text('Admin Panel'),
             ],

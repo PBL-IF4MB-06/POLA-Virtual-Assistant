@@ -140,11 +140,7 @@ class _CopilotFullPage extends StatelessWidget {
           ),
         ),
         const Expanded(
-          child: ChatPage(
-            showFeatureHeader: true,
-            emptyHint:
-                'Tanya info kampus: beasiswa, akademik, jurusan, jadwal, fasilitas. POLA akan jawab + sources.',
-          ),
+          child: ChatPage(showFeatureHeader: true),
         ),
       ],
     );

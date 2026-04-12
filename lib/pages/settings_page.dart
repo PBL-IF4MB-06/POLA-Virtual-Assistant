@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../app/app_state_scope.dart';
 import 'admin_page.dart';
 import 'login_page.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.showAppBar = true});
+
+  /// When false (e.g. embedded in a sheet that already has a title/close), no [AppBar] is shown.
+  final bool showAppBar;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +21,7 @@ class SettingsPage extends StatelessWidget {
     final chat = AppStateScope.of(context).chat;
     final settings = AppStateScope.of(context).settings;
 
-    return AnimatedBuilder(
+    final body = AnimatedBuilder(
       animation: Listenable.merge([auth, settings, theme]),
       builder: (context, _) {
         final isDark = theme.mode == ThemeMode.dark;
@@ -33,14 +36,6 @@ class SettingsPage extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            Text(
-              'Pengaturan',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 12),
             _GroupHeader('Preferensi Aplikasi'),
             const SizedBox(height: 8),
             _SurfaceCard(
@@ -87,6 +82,61 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
+            _GroupHeader('Integrasi AI (backend)'),
+            const SizedBox(height: 8),
+            _SurfaceCard(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                  child: Text(
+                    'API key Gemini Anda ditempel di server (folder server/, file .env sebagai '
+                    'GEMINI_API_KEY), bukan di aplikasi. Di sini cukup isi URL backend publik Anda.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    'Contoh: emulator Android → http://10.0.2.2:8787 · Chrome/Windows debug: '
+                    'jika URL kosong, otomatis http://127.0.0.1:8787',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                  ),
+                ),
+                const Divider(height: 1),
+                const _AiBackendUrlField(),
+                Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                    childrenPadding: const EdgeInsets.only(bottom: 8),
+                    title: Text(
+                      'Lanjutan: API key Gemini di perangkat',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    subtitle: Text(
+                      'Tanpa server; key tersimpan di HP. Lewati jika sudah pakai backend.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    children: const [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: _GeminiApiKeyField(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             _GroupHeader('Akun'),
             const SizedBox(height: 8),
             _SurfaceCard(
@@ -113,8 +163,9 @@ class SettingsPage extends StatelessWidget {
                     icon: Icons.logout,
                     title: 'Logout',
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      auth.logout();
+                    onTap: () async {
+                      await auth.logout();
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Anda keluar.')),
                       );
@@ -169,6 +220,15 @@ class SettingsPage extends StatelessWidget {
         );
       },
     );
+
+    if (!showAppBar) return body;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pengaturan'),
+      ),
+      body: body,
+    );
   }
 }
 
@@ -206,6 +266,126 @@ class _ProfilePill extends StatelessWidget {
   }
 }
 
+class _AiBackendUrlField extends StatefulWidget {
+  const _AiBackendUrlField();
+
+  @override
+  State<_AiBackendUrlField> createState() => _AiBackendUrlFieldState();
+}
+
+class _AiBackendUrlFieldState extends State<_AiBackendUrlField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focus;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focus = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = AppStateScope.of(context).settings;
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        if (!_focus.hasFocus && _controller.text != settings.aiBackendBaseUrl) {
+          _controller.value = TextEditingValue(
+            text: settings.aiBackendBaseUrl,
+            selection: TextSelection.collapsed(offset: settings.aiBackendBaseUrl.length),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: TextField(
+            controller: _controller,
+            focusNode: _focus,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: const InputDecoration(
+              labelText: 'URL backend',
+              hintText: 'https://api-anda.com atau http://10.0.2.2:8787',
+            ),
+            onChanged: (v) => unawaited(settings.setAiBackendBaseUrl(v)),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GeminiApiKeyField extends StatefulWidget {
+  const _GeminiApiKeyField();
+
+  @override
+  State<_GeminiApiKeyField> createState() => _GeminiApiKeyFieldState();
+}
+
+class _GeminiApiKeyFieldState extends State<_GeminiApiKeyField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focus;
+  bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focus = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = AppStateScope.of(context).settings;
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        if (!_focus.hasFocus && _controller.text != settings.geminiApiKey) {
+          _controller.value = TextEditingValue(
+            text: settings.geminiApiKey,
+            selection: TextSelection.collapsed(offset: settings.geminiApiKey.length),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+          child: TextField(
+            controller: _controller,
+            focusNode: _focus,
+            obscureText: _obscure,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: 'Gemini API key',
+              hintText: 'AIza…',
+              suffixIcon: IconButton(
+                tooltip: _obscure ? 'Tampilkan' : 'Sembunyikan',
+                onPressed: () => setState(() => _obscure = !_obscure),
+                icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+              ),
+            ),
+            onChanged: (v) => unawaited(settings.setGeminiApiKey(v)),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _GroupHeader extends StatelessWidget {
   const _GroupHeader(this.text);
   final String text;
@@ -233,13 +413,14 @@ class _SurfaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: cs.surface.withValues(alpha: 0.82),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
-      ),
+    return Material(
+      color: cs.surface.withValues(alpha: 0.82),
+      elevation: 0,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
       child: Column(children: _withDividers(children)),
     );
   }
@@ -567,8 +748,8 @@ Future<void> _showAbout(BuildContext context) async {
             ),
             const SizedBox(height: 10),
             Text(
-              'POLA (Polibatam Assistant) membantu menjawab pertanyaan seputar Polibatam '
-              'seperti beasiswa, akademik, jurusan, laboratorium, dan magang.',
+              'POLA (Polibatam Assistant) hanya membahas Politeknik Negeri Batam '
+              '(beasiswa, akademik, jurusan, laboratorium, magang). Pertanyaan di luar konteks kampus tidak dilayani; pencarian web membutuhkan penyebutan Polibatam.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),

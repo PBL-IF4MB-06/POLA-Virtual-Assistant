@@ -9,8 +9,8 @@ class PolaBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseA = isDark ? const Color(0xFF08101E) : const Color(0xFFEAF2FF);
-    final baseB = isDark ? const Color(0xFF040814) : const Color(0xFFF7FBFF);
+    final baseA = isDark ? const Color(0xFF070F18) : const Color(0xFFDCEEFF);
+    final baseB = isDark ? const Color(0xFF040A12) : const Color(0xFFF5FAFF);
 
     return Stack(
       children: [

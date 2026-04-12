@@ -74,21 +74,16 @@ class _ChatPageState extends State<ChatPage> {
                       },
                       child: ListView(
                         controller: _scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         children: [
-                          if (widget.showFeatureHeader) ...[
-                            ChatFeatureHeader(onSelectQuickPrompt: (q) {
-                              chat.sendUserMessage(q);
-                              _scrollToBottom();
-                            }),
-                            const SizedBox(height: 12),
-                          ],
-                          if (messages.isEmpty)
+                          if (widget.showFeatureHeader && messages.isEmpty)
+                            const ChatFeatureHeader(),
+                          if (messages.isEmpty && !widget.showFeatureHeader)
                             Padding(
                               padding: const EdgeInsets.only(top: 24),
                               child: Text(
                                 widget.emptyHint ??
-                                    'Tanya apa saja. POLA akan cari jawabannya dari sumber lokal aplikasi.',
+                                    'Tanya seputar Polibatam. POLA memakai sumber lokal kampus; untuk web, sertakan "Polibatam" di pertanyaan.',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),
@@ -121,7 +116,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                   ChatInputBar(
-                    hintText: 'Tanya apa saja (tanpa keyword)…',
+                    hintText: 'Tulis pertanyaan…',
                     onSend: (text) async {
                       await chat.sendUserMessage(text);
                       _scrollToBottom();
@@ -146,7 +141,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
             Positioned(
               right: 12,
-              bottom: 84,
+              bottom: 78,
               child: AnimatedScale(
                 duration: const Duration(milliseconds: 140),
                 scale: _showScrollToBottom ? 1 : 0.92,

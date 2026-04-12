@@ -12,31 +12,31 @@ class SuggestionEngine {
 
     // Intent ringan: kita tidak “ngarang”, hanya menyarankan langkah lanjut.
     if (q.contains('jadwal') || q.contains('pbl')) {
-      add('Saya kuliah prodi X. Tolong buat checklist mingguan untuk PBL + jadwal.');
-      add('Buat template milestone PBL 8 minggu + pembagian peran tim.');
-      add('Sumber resmi jadwal/kalender akademik Polibatam di mana?');
+      add('Di Polibatam, di mana sumber resmi kalender akademik & jadwal kuliah?');
+      add('Prosedur PBL di Polibatam untuk prodi saya—apa dokumen/milestone wajib?');
+      add('Siapa kontak akademik/prodi Polibatam untuk tanya jadwal atau PBL?');
     }
     if (q.contains('beasiswa')) {
-      add('Sebutkan beasiswa yang relevan untuk semester ini dan syarat umumnya.');
-      add('Tolong buat daftar dokumen yang biasanya dibutuhkan untuk daftar beasiswa.');
-      add('Sumber resmi info beasiswa Polibatam apa?');
+      add('Beasiswa apa saja yang tersedia di Polibatam semester ini?');
+      add('Syarat dan jadwal pendaftaran beasiswa internal Polibatam?');
+      add('Unit di Polibatam yang menangani beasiswa dan UKT?');
     }
     if (q.contains('lab') || q.contains('laboratorium') || q.contains('alat')) {
-      add('Jelaskan SOP peminjaman lab + siapa PIC-nya (sertakan sumber).');
-      add('Tolong buat form permohonan peminjaman lab (template).');
-      add('Apa saja aturan keselamatan kerja di lab?');
+      add('SOP peminjaman laboratorium di Polibatam dan kontak PIC-nya?');
+      add('Fasilitas lab apa saja yang tersedia di Polibatam untuk prodi saya?');
+      add('Aturan keselamatan kerja di lab Polibatam?');
     }
     if (q.contains('cuti') || q.contains('remed') || q.contains('kehadiran')) {
-      add('Ringkas prosedur cuti akademik langkah demi langkah + sumber.');
-      add('Apa aturan remedial/ujian susulan dan syaratnya?');
-      add('Minimal kehadiran untuk ikut UAS berapa? (sertakan sumber).');
+      add('Prosedur cuti akademik resmi di Polibatam?');
+      add('Aturan remedial/ujian susulan dan kehadiran di Polibatam?');
+      add('Minimal kehadiran untuk UAS di Polibatam menurut sumber resmi?');
     }
 
     if (out.isEmpty) {
-      add('Tolong ringkas jawaban dalam 5 poin dan cantumkan sources.');
-      add('Buatkan langkah-langkah praktis yang bisa langsung saya lakukan.');
-      add('Kalau ada aturan resmi, sebutkan dari sumber mana.');
-      add('Ajukan 3 pertanyaan klarifikasi agar jawabannya lebih tepat.');
+      add('Informasi PMB atau pendaftaran mahasiswa baru Polibatam?');
+      add('Kontak unit layanan (akademik, kemahasiswaan) Polibatam?');
+      add('Lokasi gedung/fasilitas utama kampus Polibatam?');
+      add('Syarat UKT atau pembayaran semester di Polibatam?');
     }
 
     return out.take(limit).toList();

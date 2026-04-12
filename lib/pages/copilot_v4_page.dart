@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../app/app_state_scope.dart';
 import 'chat_page.dart';
-import 'chat_search_delegate.dart';
 
 class CopilotV4Page extends StatelessWidget {
   const CopilotV4Page({super.key});
@@ -42,18 +41,6 @@ class CopilotV4Page extends StatelessWidget {
                     ),
                   ),
                   IconButton.filledTonal(
-                    tooltip: 'Search',
-                    onPressed: () async {
-                      final convo = chat.activeConversation;
-                      await showSearch(
-                        context: context,
-                        delegate: ChatSearchDelegate(messages: convo.messages),
-                      );
-                    },
-                    icon: const Icon(Icons.search),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
                     tooltip: 'New',
                     onPressed: chat.startNewConversation,
                     icon: const Icon(Icons.add),
@@ -87,7 +74,7 @@ class CopilotV4Page extends StatelessWidget {
               child: ChatPage(
                 showFeatureHeader: true,
                 emptyHint:
-                    'Mulai dari pertanyaan spesifik. POLA akan kasih jawaban + sources.',
+                    'Tanya spesifik seputar Polibatam. Di luar itu POLA tidak memakai web.',
               ),
             ),
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/app_state_scope.dart';
+import '../state/auth_state.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoginMode = true; // true = Masuk, false = Daftar
   bool _obscure = true;
   bool _submitted = false;
+  bool _googleBusy = false;
 
   @override
   void dispose() {
@@ -127,8 +129,45 @@ class _LoginPageState extends State<LoginPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => _submit(auth),
+                onPressed: _googleBusy ? null : () => _submit(auth),
                 child: Text(_isLoginMode ? 'Masuk' : 'Daftar'),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'atau',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _googleBusy ? null : () => _signInWithGoogle(auth),
+                icon: _googleBusy
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : const _GoogleMark(),
+                label: Text(_googleBusy ? 'Menghubungkan…' : 'Lanjutkan dengan Google'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -136,10 +175,12 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      auth.continueAsGuest();
-                      Navigator.of(context).pop();
-                    },
+                    onPressed: _googleBusy
+                        ? null
+                        : () {
+                            auth.continueAsGuest();
+                            Navigator.of(context).pop();
+                          },
                     child: const Text('Lanjut sebagai Tamu'),
                   ),
                 ),
@@ -161,7 +202,22 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _submit(dynamic auth) {
+  Future<void> _signInWithGoogle(AuthState auth) async {
+    setState(() => _googleBusy = true);
+    try {
+      final err = await auth.loginWithGoogle();
+      if (!mounted) return;
+      if (err == null) {
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      }
+    } finally {
+      if (mounted) setState(() => _googleBusy = false);
+    }
+  }
+
+  void _submit(AuthState auth) {
     setState(() => _submitted = true);
     final okForm = _formKey.currentState?.validate() ?? false;
     if (!okForm) return;
@@ -248,6 +304,23 @@ class _ModeTabs extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Minimal “G” mark (OAuth / Google Sign-In). Replace with an official asset if needed.
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      'G',
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF4285F4),
       ),
     );
   }

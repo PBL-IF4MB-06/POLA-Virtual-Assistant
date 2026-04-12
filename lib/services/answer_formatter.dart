@@ -70,6 +70,24 @@ class AnswerFormatter {
     return b.toString().trim();
   }
 
+  String formatOutOfScopePolibatam() {
+    return '''
+## Di luar lingkup POLA
+
+POLA hanya membahas informasi terkait **Politeknik Negeri Batam (Polibatam)**.
+
+Silakan ajukan pertanyaan seputar kampus (misalnya jadwal, UKT, PMB, prodi, fasilitas, atau kontak), dan sebut **Polibatam** atau **Politeknik Negeri Batam** bila perlu agar pencarian sumber web (jika diaktifkan) tetap relevan.'''
+        .trim();
+  }
+
+  String formatAttachmentNeedsPolibatamQuestion() {
+    return '''
+## Perlu pertanyaan terkait Polibatam
+
+POLA hanya membantu topik **Polibatam**. Setelah lampiran, tulis juga pertanyaan singkat yang jelas, misalnya prosedur atau dokumen apa di kampus yang ingin ditanyakan.'''
+        .trim();
+  }
+
   String formatFallbackSmart(String question) {
     final category = _categoryOf(question);
     final title = _titleOf(question, category);

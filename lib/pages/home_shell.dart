@@ -164,7 +164,7 @@ class _HomeShellState extends State<HomeShell> {
                 Expanded(
                   child: PrimaryScrollController(
                     controller: scrollController,
-                    child: const SettingsPage(),
+                    child: const SettingsPage(showAppBar: false),
                   ),
                 ),
               ],
@@ -243,12 +243,7 @@ class _ChatLanding extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            ChatFeatureHeader(
-              onSelectQuickPrompt: (q) async {
-                await chat.sendUserMessage(q);
-                onOpenChat();
-              },
-            ),
+            const ChatFeatureHeader(),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onOpenChat,

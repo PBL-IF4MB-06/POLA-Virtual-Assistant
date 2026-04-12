@@ -1,7 +1,9 @@
 import '../models/bot_reply.dart';
 import 'answer_formatter.dart';
 import 'admin_kb_store.dart';
+import 'gemini_service.dart';
 import 'knowledge_base.dart';
+import 'polibatam_scope.dart';
 import 'web_search.dart';
 import 'google_cse.dart';
 
@@ -11,16 +13,18 @@ class PolaBot {
     WebSearchService? web,
     GoogleCseService? google,
     AdminKbStore? adminStore,
-  })
-      : _kb = kb ?? KnowledgeBase(),
-        _web = web ?? const WebSearchService(),
-        _google = google ?? const GoogleCseService(),
-        _adminStore = adminStore ?? const AdminKbStore();
+    GeminiService? gemini,
+  }) : _kb = kb ?? KnowledgeBase(),
+       _web = web ?? const WebSearchService(),
+       _google = google ?? const GoogleCseService(),
+       _adminStore = adminStore ?? const AdminKbStore(),
+       _gemini = gemini ?? GeminiService();
 
   final KnowledgeBase _kb;
   final WebSearchService _web;
   final GoogleCseService _google;
   final AdminKbStore _adminStore;
+  final GeminiService _gemini;
   final AnswerFormatter _fmt = const AnswerFormatter();
 
   Future<BotReply> getResponse(
@@ -28,11 +32,69 @@ class PolaBot {
     bool webSearchEnabled = false,
     String googleApiKey = '',
     String googleCx = '',
+    String aiBackendBaseUrl = '',
+    String geminiApiKey = '',
   }) async {
     await _kb.ensureLoaded();
     final cleaned = question.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-    // 1) Rule-based from Admin KB (keyword-ish matching).
+    // 1) Cuplikan KB untuk konteks AI / template (BM25).
+    final hits = _kb.search(question, limit: 5);
+
+    final backendUrl = aiBackendBaseUrl.trim();
+    final gKey = geminiApiKey.trim();
+    // Utamakan AI: backend atau key Gemini di app selalu dicoba dulu (KB lokal hanya konteks).
+    final tryBackend = backendUrl.isNotEmpty;
+    final tryDirectKey = gKey.isNotEmpty;
+    if (tryBackend || tryDirectKey) {
+      try {
+        String? aiText;
+        var viaBackend = false;
+        if (tryBackend) {
+          final out = await _gemini.answerWithKbContextViaBackend(
+            backendBaseUrl: backendUrl,
+            userQuestion: cleaned,
+            knowledgeHits: hits,
+          );
+          aiText = out.reply;
+          viaBackend = aiText != null && aiText.isNotEmpty;
+        }
+        if (aiText == null || aiText.isEmpty) {
+          if (tryDirectKey) {
+            aiText = await _gemini.answerWithKbContext(
+              apiKey: gKey,
+              userQuestion: cleaned,
+              knowledgeHits: hits,
+            );
+          }
+        }
+        if (aiText != null && aiText.isNotEmpty) {
+          final sources = <BotSource>[
+            BotSource(
+              id: viaBackend ? 'gemini-backend' : 'gemini',
+              title: viaBackend ? 'Gemini (server POLA)' : 'Google Gemini',
+              excerpt: viaBackend
+                  ? 'Lewat backend Anda'
+                  : 'Model ${_gemini.modelName}',
+              url: viaBackend ? null : 'https://ai.google.dev/',
+            ),
+            ...hits.map(
+              (h) => BotSource(
+                id: h.sourceId,
+                title: h.sourceTitle,
+                excerpt: _shorten(h.text, 180),
+                url: null,
+              ),
+            ),
+          ];
+          return BotReply(text: aiText, sources: sources);
+        }
+      } catch (_) {
+        // Lanjut ke Admin FAQ / template / web.
+      }
+    }
+
+    // 2) Admin FAQ (setelah AI tidak menjawab).
     final admin = await _adminStore.load();
     final adminHit = _matchAdmin(cleaned, admin);
     if (adminHit != null) {
@@ -49,10 +111,21 @@ class PolaBot {
       );
     }
 
-    // 2) Local KB (BM25 etc).
-    final hits = _kb.search(question, limit: 3);
     if (hits.isEmpty) {
-      // Web fallback (prefer Google CSE if enabled + configured)
+      if (PolibatamScope.isAttachmentOnlyPrompt(cleaned)) {
+        return BotReply(
+          text: _fmt.formatAttachmentNeedsPolibatamQuestion(),
+          sources: const [],
+        );
+      }
+      if (!PolibatamScope.isScoped(cleaned)) {
+        return BotReply(
+          text: _fmt.formatOutOfScopePolibatam(),
+          sources: const [],
+        );
+      }
+
+      // Web fallback (prefer Google CSE if enabled + configured) — hanya jika konteks Polibatam.
       final apiKey = googleApiKey.trim();
       final cx = googleCx.trim();
       if (webSearchEnabled && apiKey.isNotEmpty && cx.isNotEmpty) {
@@ -64,7 +137,10 @@ class PolaBot {
             limit: 5,
           );
           if (results.isNotEmpty) {
-            final answer = _fmt.formatWebGoogle(question: cleaned, results: results);
+            final answer = _fmt.formatWebGoogle(
+              question: cleaned,
+              results: results,
+            );
             final sources = results
                 .map(
                   (r) => BotSource(
@@ -107,8 +183,9 @@ class PolaBot {
       return BotReply(text: answer, sources: sources);
     }
 
-    final answer = _fmt.formatLocal(question: cleaned, hits: hits);
-    final sources = hits
+    final topHits = hits.length > 3 ? hits.sublist(0, 3) : hits;
+    final answer = _fmt.formatLocal(question: cleaned, hits: topHits);
+    final sources = topHits
         .map(
           (h) => BotSource(
             id: h.sourceId,
@@ -122,7 +199,10 @@ class PolaBot {
     return BotReply(text: answer, sources: sources);
   }
 
-  static AdminKbEntry? _matchAdmin(String question, List<AdminKbEntry> entries) {
+  static AdminKbEntry? _matchAdmin(
+    String question,
+    List<AdminKbEntry> entries,
+  ) {
     final q = _tokens(question);
     if (q.isEmpty) return null;
 

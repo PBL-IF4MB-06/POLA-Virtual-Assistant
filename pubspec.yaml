@@ -38,6 +38,8 @@ dependencies:
   image_picker: ^1.1.2
   http: ^1.2.2
   url_launcher: ^6.3.1
+  google_sign_in: ^6.2.2
+  google_generative_ai: ^0.4.7
 
 dev_dependencies:
   flutter_test:
@@ -63,7 +65,9 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/
+    # Paths must NOT start with `assets/` — on web Flutter prefixes `assets/`, which would
+    # become `assets/assets/...` and 404. Use another top-level folder (e.g. `brand/`).
+    - brand/logo/pola_logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

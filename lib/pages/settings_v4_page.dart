@@ -33,7 +33,7 @@ class SettingsV4Page extends StatelessWidget {
                 ),
                 trailing: auth.isLoggedIn
                     ? TextButton(
-                        onPressed: auth.logout,
+                        onPressed: () => auth.logout(),
                         child: const Text('Logout'),
                       )
                     : FilledButton(
@@ -63,15 +63,63 @@ class SettingsV4Page extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.palette_outlined),
                     title: const Text('Aksen (v4)'),
-                    subtitle: const Text('Ungu premium'),
-                    onTap: () => theme.setSeedColor(const Color(0xFF7C3AED)),
+                    subtitle: const Text('Biru langit (#9CD5FF)'),
+                    onTap: () => theme.setSeedColor(const Color(0xFF9CD5FF)),
                     trailing: const Icon(Icons.chevron_right),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
+            _SectionTitle('AI backend (Gemini)'),
+            const SizedBox(height: 4),
+            Text(
+              'Key Gemini di server (.env). Di app: isi URL backend saja.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller:
+                          TextEditingController(text: settings.aiBackendBaseUrl),
+                      onChanged: settings.setAiBackendBaseUrl,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'URL backend',
+                        hintText: 'http://10.0.2.2:8787',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: TextEditingController(text: settings.geminiApiKey),
+                      onChanged: settings.setGeminiApiKey,
+                      obscureText: true,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Fallback: Gemini API key di perangkat',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             _SectionTitle('Web search'),
+            const SizedBox(height: 4),
+            Text(
+              'Pencarian web hanya jalan jika chat menyebut Polibatam / Politeknik Negeri Batam.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
             const SizedBox(height: 8),
             Card(
               child: Column(

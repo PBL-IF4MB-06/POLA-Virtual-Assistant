@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
 
 class PolaThemeV6 {
-  // Polibatam-inspired: teal + blue.
-  static const Color seed = Color(0xFF0EA5A4);
+  /// Aksen utama aplikasi (nuansa biru langit).
+  static const Color seed = Color(0xFF9CD5FF);
 
   static ThemeData light([Color? seedColor]) {
+    final accent = seedColor ?? seed;
     final cs = ColorScheme.fromSeed(
-      seedColor: seedColor ?? seed,
+      seedColor: accent,
       brightness: Brightness.light,
       surface: const Color(0xFFFFFFFF),
+    ).copyWith(
+      primary: accent,
+      onPrimary: const Color(0xFF0B2233),
     );
     return _base(cs, Brightness.light);
   }
 
   static ThemeData dark([Color? seedColor]) {
+    final accent = seedColor ?? seed;
     final cs = ColorScheme.fromSeed(
-      seedColor: seedColor ?? seed,
+      seedColor: accent,
       brightness: Brightness.dark,
       surface: const Color(0xFF101418),
+    ).copyWith(
+      primary: accent,
+      onPrimary: const Color(0xFF0B2233),
     );
     return _base(cs, Brightness.dark);
   }
@@ -26,7 +34,7 @@ class PolaThemeV6 {
     final base = ThemeData(useMaterial3: true, brightness: b, colorScheme: cs);
     final isDark = b == Brightness.dark;
 
-    final bg = isDark ? const Color(0xFF0B0F14) : const Color(0xFFF5F7FB);
+    final bg = isDark ? const Color(0xFF0A1118) : const Color(0xFFEEF6FB);
 
     return base.copyWith(
       scaffoldBackgroundColor: bg,
@@ -58,7 +66,7 @@ class PolaThemeV6 {
       navigationBarTheme: NavigationBarThemeData(
         height: 70,
         backgroundColor:
-            isDark ? const Color(0xFF0B0F14) : Colors.white.withValues(alpha: 0.98),
+            isDark ? const Color(0xFF0A1118) : Colors.white.withValues(alpha: 0.98),
         indicatorColor: cs.primary.withValues(alpha: isDark ? 0.22 : 0.12),
         labelTextStyle: WidgetStatePropertyAll(
           base.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),

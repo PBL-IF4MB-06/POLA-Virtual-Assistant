@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../app/app_state_scope.dart';
-import 'chat_search_delegate.dart';
 import 'chat_page.dart';
 
 class AppShellV5 extends StatelessWidget {
@@ -20,17 +19,6 @@ class AppShellV5 extends StatelessWidget {
           appBar: AppBar(
             title: const Text('POLA Copilot'),
             actions: [
-              IconButton(
-                tooltip: 'Search',
-                onPressed: () async {
-                  final convo = chat.activeConversation;
-                  await showSearch(
-                    context: context,
-                    delegate: ChatSearchDelegate(messages: convo.messages),
-                  );
-                },
-                icon: const Icon(Icons.search),
-              ),
               IconButton(
                 tooltip: 'New chat',
                 onPressed: chat.startNewConversation,
@@ -52,8 +40,6 @@ class AppShellV5 extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 760),
               child: ChatPage(
                 showFeatureHeader: true,
-                emptyHint:
-                    'Tanya apa saja. POLA jawab dengan sources. Buka menu untuk melihat history.',
               ),
             ),
           ),

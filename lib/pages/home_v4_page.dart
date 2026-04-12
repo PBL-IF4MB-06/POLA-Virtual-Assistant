@@ -70,7 +70,7 @@ class HomeV4Page extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Tanya apa saja tanpa keyword. POLA akan cari dari knowledge lokal, lalu web (opsional).',
+                  'Hanya topik Polibatam: knowledge lokal dulu, lalu web jika Anda menyebut Polibatam.',
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall

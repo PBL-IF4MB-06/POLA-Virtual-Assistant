@@ -1,117 +1,59 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-/// Simple brand logo built as vector (no asset needed).
+/// Brand logo from [assetPath] (default: bundled PNG under `brand/logo/`).
+///
+/// **Web:** also expects the same file at [webStaticPath] under the `web/`
+/// folder so `flutter run -d chrome` can load it from the site root. Keep that
+/// copy in sync when you change the logo.
 class PolaLogo extends StatelessWidget {
   const PolaLogo({
     super.key,
-    this.size = 36,
-    this.showText = false,
+    this.size = 44,
+    this.assetPath = 'brand/logo/pola_logo.png',
+    this.webStaticPath = 'brand/logo/pola_logo.png',
   });
 
   final double size;
-  final bool showText;
+
+  /// Declared under `flutter: assets:` for mobile/desktop.
+  final String assetPath;
+
+  /// Path relative to `web/` (and to the app URL origin).
+  final String webStaticPath;
 
   @override
   Widget build(BuildContext context) {
-    final mark = _PolaBotMark(size: size);
+    Widget fallback() => SizedBox(
+          width: size,
+          height: size,
+          child: Icon(Icons.smart_toy_outlined, size: size * 0.7),
+        );
 
-    if (!showText) return mark;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        mark,
-        const SizedBox(width: 10),
-        Text(
-          'POLA',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
-              ),
-        ),
-      ],
-    );
+    return kIsWeb
+        ? Image.network(
+            Uri.base.resolve(webStaticPath).toString(),
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            gaplessPlayback: true,
+            semanticLabel: 'POLA',
+            errorBuilder: (context, error, stackTrace) => fallback(),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return fallback();
+            },
+          )
+        : Image.asset(
+            assetPath,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            gaplessPlayback: true,
+            semanticLabel: 'POLA',
+            errorBuilder: (context, error, stackTrace) => fallback(),
+          );
   }
 }
-
-class _PolaBotMark extends StatelessWidget {
-  const _PolaBotMark({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final s = size;
-    final eye = s * 0.13;
-    return Container(
-      width: s,
-      height: s,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cs.primary.withValues(alpha: 0.95),
-            cs.tertiary.withValues(alpha: 0.75),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: s * 0.64,
-          height: s * 0.42,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(s),
-            color: Colors.white.withValues(alpha: 0.90),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _Eye(size: eye),
-              SizedBox(width: s * 0.14),
-              _Eye(size: eye),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Eye extends StatelessWidget {
-  const _Eye({required this.size});
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: cs.primary,
-      ),
-      child: Center(
-        child: Container(
-          width: size * 0.42,
-          height: size * 0.42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.95),
-          ),
-        ),
-      ),
-    );
-  }
-}
-

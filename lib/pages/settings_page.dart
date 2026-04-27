@@ -297,10 +297,11 @@ class _AiBackendUrlFieldState extends State<_AiBackendUrlField> {
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
-        if (!_focus.hasFocus && _controller.text != settings.aiBackendBaseUrl) {
+        final effectiveUrl = settings.effectiveAiBackendBaseUrl;
+        if (!_focus.hasFocus && _controller.text != effectiveUrl) {
           _controller.value = TextEditingValue(
-            text: settings.aiBackendBaseUrl,
-            selection: TextSelection.collapsed(offset: settings.aiBackendBaseUrl.length),
+            text: effectiveUrl,
+            selection: TextSelection.collapsed(offset: effectiveUrl.length),
           );
         }
         return Padding(
@@ -313,7 +314,7 @@ class _AiBackendUrlFieldState extends State<_AiBackendUrlField> {
             enableSuggestions: false,
             decoration: const InputDecoration(
               labelText: 'URL backend',
-              hintText: 'https://api-anda.com atau http://10.0.2.2:8787',
+              hintText: 'Otomatis (localhost) saat kosong',
             ),
             onChanged: (v) => unawaited(settings.setAiBackendBaseUrl(v)),
           ),

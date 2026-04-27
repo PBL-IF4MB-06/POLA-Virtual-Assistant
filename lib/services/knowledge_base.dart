@@ -38,6 +38,11 @@ class KnowledgeBase {
                 title: 'Desain Umum Sistem (POLA)',
                 assetPath: 'brand/keterangan_desain_umum_sistem.txt',
               ),
+              KnowledgeSource(
+                id: 'dataset-custom',
+                title: 'Dataset Custom',
+                assetPath: 'brand/knowledge/dataset_custom.txt',
+              ),
             ];
 
   final List<KnowledgeSource> _sources;

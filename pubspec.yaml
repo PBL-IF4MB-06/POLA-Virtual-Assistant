@@ -68,7 +68,6 @@ flutter:
     # Paths must NOT start with `assets/` — on web Flutter prefixes `assets/`, which would
     # become `assets/assets/...` and 404. Use another top-level folder (e.g. `brand/`).
     - brand/logo/pola_logo.png
-    - brand/keterangan_desain_umum_sistem.txt
     - brand/knowledge/
 
   # An image asset can refer to one or more resolution-specific "variants", see

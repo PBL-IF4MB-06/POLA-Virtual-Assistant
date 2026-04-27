@@ -33,7 +33,11 @@ Aturan:
 
     final prompt = _buildPrompt(userQuestion, knowledgeHits);
     try {
-      return await _callHfRouter(token: key, model: modelName, prompt: prompt);
+      return await _callHfRouter(
+        token: key,
+        model: modelName,
+        prompt: prompt,
+      );
     } catch (_) {
       return null;
     }
@@ -73,10 +77,7 @@ Aturan:
       if (resp.statusCode == 200) {
         final map = jsonDecode(resp.body);
         if (map is! Map<String, dynamic>) {
-          return (
-            reply: null,
-            hint: 'Jawaban backend tidak dikenali (bukan JSON).',
-          );
+          return (reply: null, hint: 'Jawaban backend tidak dikenali (bukan JSON).');
         }
         final reply = map['reply'];
         if (reply is! String) {
@@ -91,8 +92,7 @@ Aturan:
       String? apiMsg;
       try {
         final map = jsonDecode(resp.body);
-        if (map is Map && map['error'] is String)
-          apiMsg = map['error'] as String;
+        if (map is Map && map['error'] is String) apiMsg = map['error'] as String;
       } catch (_) {}
       apiMsg ??= resp.reasonPhrase ?? 'HTTP ${resp.statusCode}';
       return (reply: null, hint: _backendFailureHint(resp.statusCode, apiMsg));
@@ -103,8 +103,8 @@ Aturan:
         hint: isTimeout
             ? 'Backend tidak menjawab dalam 55 detik (timeout). Periksa server, jaringan, atau beban API Hugging Face.'
             : 'Tidak terhubung ke backend. Pastikan server jalan (cd server lalu npm start), '
-                  'HF_TOKEN di server/.env valid, dan URL benar (Chrome/Windows: http://127.0.0.1:8787; '
-                  'emulator Android: http://10.0.2.2:8787).',
+                'HF_TOKEN di server/.env valid, dan URL benar (Chrome/Windows: http://127.0.0.1:8787; '
+                'emulator Android: http://10.0.2.2:8787).',
       );
     }
   }
@@ -117,15 +117,10 @@ Aturan:
     return 'Backend error ($code): $apiMessage';
   }
 
-  String _buildPrompt(
-    String userQuestion,
-    List<KnowledgeSnippet> knowledgeHits,
-  ) {
+  String _buildPrompt(String userQuestion, List<KnowledgeSnippet> knowledgeHits) {
     final b = StringBuffer();
     if (knowledgeHits.isNotEmpty) {
-      b.writeln(
-        'Potongan basis pengetahuan internal (prioritaskan jika relevan):',
-      );
+      b.writeln('Potongan basis pengetahuan internal (prioritaskan jika relevan):');
       for (var i = 0; i < knowledgeHits.length; i++) {
         final h = knowledgeHits[i];
         b.writeln();

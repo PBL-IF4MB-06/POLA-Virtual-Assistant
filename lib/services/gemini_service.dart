@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 
 import 'knowledge_base.dart';
 
 /// Jawaban via [Google AI Gemini](https://ai.google.dev/) memakai API key dari pengaturan.
 class GeminiService {
-  GeminiService({this.modelName = 'gemini-2.0-flash'});
+  GeminiService({this.modelName = 'moonshotai/Kimi-K2-Instruct-0905'});
 
-  /// Model id di Google AI / Vertex (sesuaikan di konsol jika perlu).
+  /// Model id di Hugging Face Router (OpenAI-compatible API).
   final String modelName;
 
   static const _system = '''
@@ -23,7 +22,7 @@ Aturan:
 - Hindari klaim legal/medis yang tidak perlu; tetap informatif untuk mahasiswa/kalangan kampus.
 ''';
 
-  /// Mengembalikan teks jawaban, atau `null` jika gagal / kosong / diblokir model.
+  /// Mengembalikan teks jawaban, atau `null` jika gagal / kosong.
   Future<String?> answerWithKbContext({
     required String apiKey,
     required String userQuestion,
@@ -33,28 +32,15 @@ Aturan:
     if (key.isEmpty) return null;
 
     final prompt = _buildPrompt(userQuestion, knowledgeHits);
-
-    Future<String?> tryModel(String name) async {
-      final model = GenerativeModel(
-        model: name,
-        apiKey: key,
-        systemInstruction: Content.system(_system.trim()),
-      );
-      final response = await model.generateContent([Content.text(prompt)]);
-      return response.text?.trim();
-    }
-
     try {
-      final t = await tryModel(modelName);
-      if (t != null && t.isNotEmpty) return t;
-    } catch (_) {}
-    if (modelName != 'gemini-1.5-flash') {
-      try {
-        final t = await tryModel('gemini-1.5-flash');
-        if (t != null && t.isNotEmpty) return t;
-      } catch (_) {}
+      return await _callHfRouter(
+        token: key,
+        model: modelName,
+        prompt: prompt,
+      );
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 
   /// Memanggil backend POLA (`server/`). [hint] berisi pesan singkat jika gagal (untuk ditampilkan ke pengguna).
@@ -115,9 +101,9 @@ Aturan:
       return (
         reply: null,
         hint: isTimeout
-            ? 'Backend tidak menjawab dalam 55 detik (timeout). Periksa server, jaringan, atau beban API Gemini.'
+            ? 'Backend tidak menjawab dalam 55 detik (timeout). Periksa server, jaringan, atau beban API Hugging Face.'
             : 'Tidak terhubung ke backend. Pastikan server jalan (cd server lalu npm start), '
-                'GEMINI_API_KEY di server/.env valid, dan URL benar (Chrome/Windows: http://127.0.0.1:8787; '
+                'HF_TOKEN di server/.env valid, dan URL benar (Chrome/Windows: http://127.0.0.1:8787; '
                 'emulator Android: http://10.0.2.2:8787).',
       );
     }
@@ -146,5 +132,61 @@ Aturan:
     b.writeln('Pertanyaan pengguna:');
     b.writeln(userQuestion.trim());
     return b.toString();
+  }
+
+  Future<String> _callHfRouter({
+    required String token,
+    required String model,
+    required String prompt,
+  }) async {
+    const uri = 'https://router.huggingface.co/v1/chat/completions';
+    final resp = await http
+        .post(
+          Uri.parse(uri),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=utf-8',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': [
+              {'role': 'system', 'content': _system.trim()},
+              {'role': 'user', 'content': prompt},
+            ],
+          }),
+        )
+        .timeout(const Duration(seconds: 55));
+    final map = jsonDecode(resp.body);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      final err = (map is Map<String, dynamic> && map['error'] != null)
+          ? map['error'].toString()
+          : 'HTTP ${resp.statusCode}';
+      throw Exception('Hugging Face error: $err');
+    }
+    if (map is! Map<String, dynamic>) {
+      throw Exception('Respons Hugging Face tidak valid.');
+    }
+    final choices = map['choices'];
+    if (choices is! List || choices.isEmpty) {
+      throw Exception('Tidak ada choices dari Hugging Face.');
+    }
+    final msg = (choices.first as Map<String, dynamic>)['message'];
+    if (msg is! Map<String, dynamic>) {
+      throw Exception('Field message tidak valid.');
+    }
+    final content = msg['content'];
+    if (content is String && content.trim().isNotEmpty) {
+      return content.trim();
+    }
+    if (content is List) {
+      final text = content
+          .whereType<Map>()
+          .map((p) => p['text'])
+          .whereType<String>()
+          .join()
+          .trim();
+      if (text.isNotEmpty) return text;
+    }
+    throw Exception('Model tidak mengembalikan teks.');
   }
 }

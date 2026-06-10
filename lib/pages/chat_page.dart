@@ -6,6 +6,7 @@ import '../app/app_state_scope.dart';
 import '../models/chat_message.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/chat_feature_header.dart';
+import '../services/speech_input_service.dart';
 import '../widgets/chat_input_bar.dart';
 
 class ChatPage extends StatefulWidget {
@@ -46,6 +47,9 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final chat = AppStateScope.of(context).chat;
+    final speechLocaleId = SpeechInputService.localeFromAppLanguage(
+      AppStateScope.of(context).settings.appLanguage,
+    );
 
     return AnimatedBuilder(
       animation: chat,
@@ -117,6 +121,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   ChatInputBar(
                     hintText: 'Tulis pertanyaan…',
+                    speechLocaleId: speechLocaleId,
                     onSend: (text) async {
                       await chat.sendUserMessage(text);
                       _scrollToBottom();

@@ -2,39 +2,69 @@ import 'package:flutter/material.dart';
 
 import '../app/app_state_scope.dart';
 import '../ui/widgets/pola_background.dart';
+import '../widgets/auth_welcome_dialog.dart';
 import '../widgets/pola_logo.dart';
 import 'chat_page.dart';
 import 'settings_page.dart';
 
 /// Shell utama: chat penuh + drawer kiri (ala ChatGPT) untuk riwayat & pengaturan.
-class AppShellV7 extends StatelessWidget {
+class AppShellV7 extends StatefulWidget {
   const AppShellV7({super.key});
+
+  @override
+  State<AppShellV7> createState() => _AppShellV7State();
+}
+
+class _AppShellV7State extends State<AppShellV7> {
+  bool _authPromptChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowAuthWelcome());
+  }
+
+  Future<void> _maybeShowAuthWelcome() async {
+    if (_authPromptChecked || !mounted) return;
+    _authPromptChecked = true;
+
+    final auth = AppStateScope.of(context).auth;
+    if (auth.isLoggedIn) return;
+
+    await showAuthWelcomeDialog(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     final chat = AppStateScope.of(context).chat;
+    final auth = AppStateScope.of(context).auth;
 
-    return PolaBackground(
-      child: AnimatedBuilder(
-        animation: chat,
-        builder: (context, _) {
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            drawer: const _PolaDrawer(),
-            body: SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _TopBarV7(),
-                  const Expanded(
-                    child: ChatPage(showFeatureHeader: true),
+    return AnimatedBuilder(
+      animation: auth,
+      builder: (context, _) {
+        return PolaBackground(
+          child: AnimatedBuilder(
+            animation: chat,
+            builder: (context, _) {
+              return Scaffold(
+                backgroundColor: Colors.transparent,
+                drawer: const _PolaDrawer(),
+                body: SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _TopBarV7(),
+                      const Expanded(
+                        child: ChatPage(showFeatureHeader: true),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

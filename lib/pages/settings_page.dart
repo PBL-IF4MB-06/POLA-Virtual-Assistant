@@ -18,7 +18,6 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = AppStateScope.of(context).auth;
     final theme = AppStateScope.of(context).theme;
-    final chat = AppStateScope.of(context).chat;
     final settings = AppStateScope.of(context).settings;
 
     final body = AnimatedBuilder(
@@ -26,8 +25,9 @@ class SettingsPage extends StatelessWidget {
       builder: (context, _) {
         final isDark = theme.mode == ThemeMode.dark;
         final isId = settings.appLanguage == 'Indonesia';
-        final effectiveName =
-            settings.profileName.isNotEmpty ? settings.profileName : auth.displayName;
+        final effectiveName = settings.profileName.isNotEmpty
+            ? settings.profileName
+            : auth.displayName;
         final handleBase = settings.username.isNotEmpty
             ? settings.username
             : (auth.email.split('@').first);
@@ -44,7 +44,8 @@ class SettingsPage extends StatelessWidget {
                   icon: Icons.dark_mode_outlined,
                   title: 'Mode Gelap',
                   value: isDark,
-                  onChanged: (v) => theme.setMode(v ? ThemeMode.dark : ThemeMode.light),
+                  onChanged: (v) =>
+                      theme.setMode(v ? ThemeMode.dark : ThemeMode.light),
                 ),
                 _NavRow(
                   icon: Icons.language_outlined,
@@ -67,72 +68,11 @@ class SettingsPage extends StatelessWidget {
                   value: settings.spellCorrection,
                   onChanged: settings.setSpellCorrection,
                 ),
-                _NavRow(
-                  icon: Icons.restart_alt,
-                  title: 'Reset Riwayat Chat',
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _confirmResetChat(context, chat),
-                ),
                 _SwitchRow(
                   icon: Icons.volume_up_outlined,
                   title: 'Efek Suara',
                   value: settings.soundEffects,
                   onChanged: settings.setSoundEffects,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _GroupHeader('Integrasi AI (backend)'),
-            const SizedBox(height: 8),
-            _SurfaceCard(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-                  child: Text(
-                    'API key Gemini Anda ditempel di server (folder server/, file .env sebagai '
-                    'GEMINI_API_KEY), bukan di aplikasi. Di sini cukup isi URL backend publik Anda.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: Text(
-                    'Contoh: emulator Android → http://10.0.2.2:8787 · Chrome/Windows debug: '
-                    'jika URL kosong, otomatis http://127.0.0.1:8787',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
-                  ),
-                ),
-                const Divider(height: 1),
-                const _AiBackendUrlField(),
-                Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-                    childrenPadding: const EdgeInsets.only(bottom: 8),
-                    title: Text(
-                      'Lanjutan: API key Gemini di perangkat',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    subtitle: Text(
-                      'Tanpa server; key tersimpan di HP. Lewati jika sudah pakai backend.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    children: const [
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: _GeminiApiKeyField(),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -165,6 +105,8 @@ class SettingsPage extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () async {
                       await auth.logout();
+                      if (!context.mounted) return;
+                      await AppStateScope.of(context).chat.loadFromStorage();
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Anda keluar.')),
@@ -212,8 +154,8 @@ class SettingsPage extends StatelessWidget {
               child: Text(
                 'Versi 1.0.0',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -224,9 +166,7 @@ class SettingsPage extends StatelessWidget {
     if (!showAppBar) return body;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pengaturan'),
-      ),
+      appBar: AppBar(title: const Text('Pengaturan')),
       body: body,
     );
   }
@@ -248,18 +188,18 @@ class _ProfilePill extends StatelessWidget {
           name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         Text(
           handle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );
@@ -278,9 +218,9 @@ class _GroupHeader extends StatelessWidget {
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -368,9 +308,9 @@ class _LanguagePill extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(width: 10),
         Container(
@@ -383,9 +323,9 @@ class _LanguagePill extends StatelessWidget {
           child: Text(
             code,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: cs.primary,
-                  fontWeight: FontWeight.w900,
-                ),
+              color: cs.primary,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ],
@@ -430,41 +370,16 @@ Future<void> _pickLanguage(BuildContext context, dynamic settings) async {
   }
 }
 
-Future<void> _confirmResetChat(BuildContext context, dynamic chat) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Reset riwayat chat?'),
-      content: const Text('Semua percakapan akan dihapus dari perangkat ini.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Reset'),
-        ),
-      ],
-    ),
-  );
-  if (ok == true) {
-    chat.clearAllConversations();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Riwayat chat sudah di-reset.')),
-    );
-  }
-}
-
 Future<void> _showEditProfile(BuildContext context) async {
   final auth = AppStateScope.of(context).auth;
   final settings = AppStateScope.of(context).settings;
 
-  final effectiveName =
-      settings.profileName.isNotEmpty ? settings.profileName : auth.displayName;
-  final handleBase =
-      settings.username.isNotEmpty ? settings.username : auth.email.split('@').first;
+  final effectiveName = settings.profileName.isNotEmpty
+      ? settings.profileName
+      : auth.displayName;
+  final handleBase = settings.username.isNotEmpty
+      ? settings.username
+      : auth.email.split('@').first;
 
   final nameController = TextEditingController(text: effectiveName);
   final userController = TextEditingController(text: handleBase);
@@ -534,9 +449,9 @@ Future<void> _showEditProfile(BuildContext context) async {
 Future<void> _showChangePassword(BuildContext context) async {
   final auth = AppStateScope.of(context).auth;
   if (!auth.isLoggedIn) {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
     return;
   }
 
@@ -566,7 +481,9 @@ Future<void> _showChangePassword(BuildContext context) async {
           TextField(
             controller: confirmC,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Konfirmasi kata sandi baru'),
+            decoration: const InputDecoration(
+              labelText: 'Konfirmasi kata sandi baru',
+            ),
           ),
         ],
       ),
@@ -576,20 +493,23 @@ Future<void> _showChangePassword(BuildContext context) async {
           child: const Text('Batal'),
         ),
         FilledButton(
-          onPressed: () {
+          onPressed: () async {
             final oldPass = oldC.text;
             final newPass = newC.text;
             if (newPass.isEmpty || newPass != confirmC.text) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Konfirmasi kata sandi tidak cocok.')),
+                const SnackBar(
+                  content: Text('Konfirmasi kata sandi tidak cocok.'),
+                ),
               );
               return;
             }
-            final ok = auth.changePassword(
+            final ok = await auth.changePassword(
               email: auth.email,
               oldPassword: oldPass,
               newPassword: newPass,
             );
+            if (!context.mounted) return;
             if (!ok) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Kata sandi lama salah.')),
@@ -621,10 +541,9 @@ Future<void> _showAbout(BuildContext context) async {
           children: [
             Text(
               'Tentang POLA',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
             Text(
@@ -636,8 +555,8 @@ Future<void> _showAbout(BuildContext context) async {
             Text(
               'Versi 1.0.0',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 8),
           ],
@@ -676,10 +595,9 @@ class _AvatarEditor extends StatelessWidget {
                   ? null
                   : Text(
                       initials,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
             ),
             Positioned(

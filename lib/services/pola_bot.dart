@@ -1,7 +1,7 @@
 import '../models/bot_reply.dart';
 import 'answer_formatter.dart';
 import 'admin_kb_store.dart';
-import 'gemini_service.dart';
+import 'ai_backend_service.dart';
 import 'knowledge_base.dart';
 import 'polibatam_scope.dart';
 import 'web_search.dart';
@@ -13,18 +13,18 @@ class PolaBot {
     WebSearchService? web,
     GoogleCseService? google,
     AdminKbStore? adminStore,
-    GeminiService? gemini,
+    AiBackendService? backend,
   }) : _kb = kb ?? KnowledgeBase(),
        _web = web ?? const WebSearchService(),
        _google = google ?? const GoogleCseService(),
        _adminStore = adminStore ?? const AdminKbStore(),
-       _gemini = gemini ?? GeminiService();
+       _backend = backend ?? const AiBackendService();
 
   final KnowledgeBase _kb;
   final WebSearchService _web;
   final GoogleCseService _google;
   final AdminKbStore _adminStore;
-  final GeminiService _gemini;
+  final AiBackendService _backend;
   final AnswerFormatter _fmt = const AnswerFormatter();
 
   Future<BotReply> getResponse(
@@ -33,7 +33,6 @@ class PolaBot {
     String googleApiKey = '',
     String googleCx = '',
     String aiBackendBaseUrl = '',
-    String geminiApiKey = '',
   }) async {
     await _kb.ensureLoaded();
     final cleaned = question.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -42,56 +41,36 @@ class PolaBot {
     final hits = _kb.search(question, limit: 5);
 
     final backendUrl = aiBackendBaseUrl.trim();
-    final gKey = geminiApiKey.trim();
-    // Utamakan AI: backend atau key Gemini di app selalu dicoba dulu (KB lokal hanya konteks).
-    final tryBackend = backendUrl.isNotEmpty;
-    final tryDirectKey = gKey.isNotEmpty;
-    if (tryBackend || tryDirectKey) {
-      try {
-        String? aiText;
-        var viaBackend = false;
-        if (tryBackend) {
-          final out = await _gemini.answerWithKbContextViaBackend(
-            backendBaseUrl: backendUrl,
-            userQuestion: cleaned,
-            knowledgeHits: hits,
-          );
-          aiText = out.reply;
-          viaBackend = aiText != null && aiText.isNotEmpty;
-        }
-        if (aiText == null || aiText.isEmpty) {
-          if (tryDirectKey) {
-            aiText = await _gemini.answerWithKbContext(
-              apiKey: gKey,
-              userQuestion: cleaned,
-              knowledgeHits: hits,
-            );
-          }
-        }
-        if (aiText != null && aiText.isNotEmpty) {
-          final sources = <BotSource>[
-            BotSource(
-              id: viaBackend ? 'gemini-backend' : 'gemini',
-              title: viaBackend ? 'Gemini (server POLA)' : 'Google Gemini',
-              excerpt: viaBackend
-                  ? 'Lewat backend Anda'
-                  : 'Model ${_gemini.modelName}',
-              url: viaBackend ? null : 'https://ai.google.dev/',
+    if (backendUrl.isNotEmpty) {
+      final out = await _backend.answerWithKbContextViaBackend(
+        backendBaseUrl: backendUrl,
+        userQuestion: cleaned,
+        knowledgeHits: hits,
+      );
+      final aiText = out.reply;
+      if (aiText != null && aiText.isNotEmpty) {
+        // Sources memang tetap dibuat di sini, tapi UI sudah disembunyikan dan ChatState tidak menyimpan sources.
+        final sources = <BotSource>[
+          const BotSource(
+            id: 'hf-backend',
+            title: 'Hugging Face (server POLA)',
+            excerpt: 'Lewat backend Anda',
+            url: null,
+          ),
+          ...hits.map(
+            (h) => BotSource(
+              id: h.sourceId,
+              title: h.sourceTitle,
+              excerpt: _shorten(h.text, 180),
+              url: null,
             ),
-            ...hits.map(
-              (h) => BotSource(
-                id: h.sourceId,
-                title: h.sourceTitle,
-                excerpt: _shorten(h.text, 180),
-                url: null,
-              ),
-            ),
-          ];
-          return BotReply(text: aiText, sources: sources);
-        }
-      } catch (_) {
-        // Lanjut ke Admin FAQ / template / web.
+          ),
+        ];
+        return BotReply(text: aiText, sources: sources);
       }
+
+      // Jika backend dikonfigurasi tapi gagal/empty, biarkan caller memutuskan retry (loading terus).
+      throw Exception(out.hint ?? 'AI backend gagal memberikan jawaban.');
     }
 
     // 2) Admin FAQ (setelah AI tidak menjawab).

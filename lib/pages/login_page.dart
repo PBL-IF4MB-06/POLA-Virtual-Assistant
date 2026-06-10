@@ -4,7 +4,13 @@ import '../app/app_state_scope.dart';
 import '../state/auth_state.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({
+    super.key,
+    this.initialLoginMode = true,
+  });
+
+  /// `true` = Masuk, `false` = Daftar
+  final bool initialLoginMode;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -15,10 +21,16 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _confirmPassword = TextEditingController();
-  bool _isLoginMode = true; // true = Masuk, false = Daftar
+  late bool _isLoginMode;
   bool _obscure = true;
   bool _submitted = false;
   bool _googleBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLoginMode = widget.initialLoginMode;
+  }
 
   @override
   void dispose() {
@@ -208,6 +220,8 @@ class _LoginPageState extends State<LoginPage> {
       final err = await auth.loginWithGoogle();
       if (!mounted) return;
       if (err == null) {
+        await AppStateScope.of(context).chat.loadFromStorage();
+        if (!mounted) return;
         Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
@@ -217,7 +231,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _submit(AuthState auth) {
+  Future<void> _submit(AuthState auth) async {
     setState(() => _submitted = true);
     final okForm = _formKey.currentState?.validate() ?? false;
     if (!okForm) return;
@@ -225,24 +239,18 @@ class _LoginPageState extends State<LoginPage> {
     final email = _email.text.trim();
     final pass = _password.text;
 
-    if (_isLoginMode) {
-      final ok = auth.loginWithPassword(email: email, password: pass);
-      if (!ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email atau password salah.')),
-        );
-        return;
-      }
-    } else {
-      final ok = auth.register(email: email, password: pass);
-      if (!ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registrasi gagal. Email mungkin sudah terdaftar.')),
-        );
-        return;
-      }
+    final err = _isLoginMode
+        ? await auth.loginWithPassword(email: email, password: pass)
+        : await auth.register(email: email, password: pass);
+    if (!mounted) return;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
     }
 
+    if (!mounted) return;
+    await AppStateScope.of(context).chat.loadFromStorage();
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 }

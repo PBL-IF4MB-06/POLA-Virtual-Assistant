@@ -1,7 +1,7 @@
 {
   "name": "pola-ai-backend",
   "private": true,
-  "description": "Proxy Gemini untuk POLA — API key Google hanya di server (.env).",
+  "description": "Proxy Hugging Face Router untuk POLA — token hanya di server (.env).",
   "type": "module",
   "scripts": {
     "start": "node index.js"

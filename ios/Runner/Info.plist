@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>POLA membutuhkan akses mikrofon untuk input suara.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>POLA membutuhkan akses pengenalan suara untuk mengubah bicara menjadi teks.</string>
 </dict>
 </plist>

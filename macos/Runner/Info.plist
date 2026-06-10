@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>POLA membutuhkan akses mikrofon untuk input suara.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>POLA membutuhkan akses pengenalan suara untuk mengubah bicara menjadi teks.</string>
 </dict>
 </plist>

@@ -21,8 +21,6 @@ class SettingsState extends ChangeNotifier {
   static const _kWebSearchEnabled = 'pola_web_search_enabled_v7';
   static const _kGoogleCseApiKey = 'pola_google_cse_api_key_v7';
   static const _kGoogleCseCx = 'pola_google_cse_cx_v7';
-  static const _kGeminiApiKey = 'pola_gemini_api_key_v7';
-  static const _kAiBackendBaseUrl = 'pola_ai_backend_base_url_v7';
 
   String _profileName = '';
   String _username = '';
@@ -45,8 +43,6 @@ class SettingsState extends ChangeNotifier {
   bool _webSearchEnabled = false;
   String _googleCseApiKey = '';
   String _googleCseCx = '';
-  String _geminiApiKey = '';
-  String _aiBackendBaseUrl = '';
 
   String get profileName => _profileName;
   String get username => _username;
@@ -69,8 +65,6 @@ class SettingsState extends ChangeNotifier {
   bool get webSearchEnabled => _webSearchEnabled;
   String get googleCseApiKey => _googleCseApiKey;
   String get googleCseCx => _googleCseCx;
-  String get geminiApiKey => _geminiApiKey;
-  String get aiBackendBaseUrl => _aiBackendBaseUrl;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -95,8 +89,6 @@ class SettingsState extends ChangeNotifier {
     _webSearchEnabled = prefs.getBool(_kWebSearchEnabled) ?? false;
     _googleCseApiKey = prefs.getString(_kGoogleCseApiKey) ?? '';
     _googleCseCx = prefs.getString(_kGoogleCseCx) ?? '';
-    _geminiApiKey = prefs.getString(_kGeminiApiKey) ?? '';
-    _aiBackendBaseUrl = prefs.getString(_kAiBackendBaseUrl) ?? '';
     notifyListeners();
   }
 
@@ -246,24 +238,6 @@ class SettingsState extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kGoogleCseCx, v);
-  }
-
-  Future<void> setGeminiApiKey(String value) async {
-    final v = value.trim();
-    if (v == _geminiApiKey) return;
-    _geminiApiKey = v;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kGeminiApiKey, v);
-  }
-
-  Future<void> setAiBackendBaseUrl(String value) async {
-    final v = value.trim();
-    if (v == _aiBackendBaseUrl) return;
-    _aiBackendBaseUrl = v;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kAiBackendBaseUrl, v);
   }
 }
 

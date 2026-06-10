@@ -41,7 +41,7 @@ class HomeV4Page extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   Text(
-                    'Reset total UI • Copilot dengan sources',
+                    'Reset total UI',
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall

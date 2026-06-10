@@ -12,8 +12,8 @@ void main() {
     final auth = AuthState();
     await auth.load();
 
-    final ok = auth.register(email: 'user@polibatam.ac.id', password: 'pass123');
-    expect(ok, true);
+    final err = await auth.register(email: 'user@polibatam.ac.id', password: 'pass123');
+    expect(err, isNull);
     expect(auth.isLoggedIn, true);
     expect(auth.email, 'user@polibatam.ac.id');
 
@@ -26,10 +26,10 @@ void main() {
   test('login with wrong password fails', () async {
     final auth = AuthState();
     await auth.load();
-    auth.register(email: 'a@b.com', password: 'x');
+    await auth.register(email: 'a@b.com', password: 'x');
 
-    final ok = auth.loginWithPassword(email: 'a@b.com', password: 'wrong');
-    expect(ok, false);
+    final err = await auth.loginWithPassword(email: 'a@b.com', password: 'wrong');
+    expect(err, isNotNull);
   });
 }
 

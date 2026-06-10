@@ -95,8 +95,7 @@ class _AdminPageState extends State<AdminPage> {
                           if (qq.isEmpty || aa.isEmpty) return;
                           Navigator.of(context).pop(
                             AdminKbEntry(
-                              id: existing?.id ??
-                                  DateTime.now().microsecondsSinceEpoch.toString(),
+                              id: existing?.id ?? AdminKbStore.newId(),
                               question: qq,
                               answer: aa,
                             ),

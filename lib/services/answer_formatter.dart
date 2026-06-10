@@ -72,8 +72,6 @@ class AnswerFormatter {
 
   String formatOutOfScopePolibatam() {
     return '''
-## Di luar lingkup POLA
-
 POLA hanya membahas informasi terkait **Politeknik Negeri Batam (Polibatam)**.
 
 Silakan ajukan pertanyaan seputar kampus (misalnya jadwal, UKT, PMB, prodi, fasilitas, atau kontak), dan sebut **Polibatam** atau **Politeknik Negeri Batam** bila perlu agar pencarian sumber web (jika diaktifkan) tetap relevan.'''
@@ -95,7 +93,9 @@ POLA hanya membantu topik **Polibatam**. Setelah lampiran, tulis juga pertanyaan
     b.writeln('## $title');
     b.writeln(_categoryLabel(category));
     b.writeln();
-    b.writeln('Maaf, aku belum bisa memastikan jawaban dari sumber yang tersedia.');
+    b.writeln(
+      'Maaf, aku belum bisa memastikan jawaban dari sumber yang tersedia.',
+    );
     b.writeln();
     b.writeln('Coba pilih salah satu:');
     for (final s in _fallbackOptions(category)) {
@@ -115,7 +115,9 @@ POLA hanya membantu topik **Polibatam**. Setelah lampiran, tulis juga pertanyaan
     if (s.contains('beasiswa') || s.contains('biaya') || s.contains('ukt')) {
       return AnswerCategory.keuangan;
     }
-    if (s.contains('lab') || s.contains('laboratorium') || s.contains('fasilitas')) {
+    if (s.contains('lab') ||
+        s.contains('laboratorium') ||
+        s.contains('fasilitas')) {
       return AnswerCategory.fasilitas;
     }
     if (s.contains('pbl') || s.contains('project')) return AnswerCategory.pbl;
@@ -152,29 +154,29 @@ POLA hanya membantu topik **Polibatam**. Setelah lampiran, tulis juga pertanyaan
   static List<String> _fallbackOptions(AnswerCategory c) {
     return switch (c) {
       AnswerCategory.akademik => [
-          'Sebutkan program studi dan semester kamu.',
-          'Yang kamu butuhkan: jadwal, cuti, remedial, atau kehadiran?',
-          'Aktifkan Google CSE di Settings supaya aku bisa ambil sumber resmi web.',
-        ],
+        'Sebutkan program studi dan semester kamu.',
+        'Yang kamu butuhkan: jadwal, cuti, remedial, atau kehadiran?',
+        'Aktifkan Google CSE di Settings supaya aku bisa ambil sumber resmi web.',
+      ],
       AnswerCategory.keuangan => [
-          'Kamu cari beasiswa jenis apa? (KIP/industri/internal)',
-          'Sebutkan semester & kondisi (IPK/UKT) jika relevan.',
-          'Aktifkan Google CSE di Settings untuk sumber resmi.',
-        ],
+        'Kamu cari beasiswa jenis apa? (KIP/industri/internal)',
+        'Sebutkan semester & kondisi (IPK/UKT) jika relevan.',
+        'Aktifkan Google CSE di Settings untuk sumber resmi.',
+      ],
       AnswerCategory.fasilitas => [
-          'Lab apa yang dimaksud? (komputer/robotika/manufaktur/dll)',
-          'Kebutuhannya: peminjaman, SOP, atau ketersediaan?',
-          'Aktifkan Google CSE di Settings untuk sumber resmi.',
-        ],
+        'Lab apa yang dimaksud? (komputer/robotika/manufaktur/dll)',
+        'Kebutuhannya: peminjaman, SOP, atau ketersediaan?',
+        'Aktifkan Google CSE di Settings untuk sumber resmi.',
+      ],
       AnswerCategory.pbl => [
-          'Sebutkan topik PBL dan durasi (mis. 8 minggu).',
-          'Tim kamu berapa orang dan lintas jurusan apa?',
-          'Mau output: milestone, peran tim, atau checklist laporan?',
-        ],
+        'Sebutkan topik PBL dan durasi (mis. 8 minggu).',
+        'Tim kamu berapa orang dan lintas jurusan apa?',
+        'Mau output: milestone, peran tim, atau checklist laporan?',
+      ],
       AnswerCategory.umum => [
-          'Tuliskan pertanyaan lebih spesifik (contoh: biaya, prodi, kontak).',
-          'Aktifkan Google CSE di Settings supaya sources web bisa dipakai.',
-        ],
+        'Tuliskan pertanyaan lebih spesifik (contoh: biaya, prodi, kontak).',
+        'Aktifkan Google CSE di Settings supaya sources web bisa dipakai.',
+      ],
     };
   }
 
@@ -198,4 +200,3 @@ POLA hanya membantu topik **Polibatam**. Setelah lampiran, tulis juga pertanyaan
     return out;
   }
 }
-

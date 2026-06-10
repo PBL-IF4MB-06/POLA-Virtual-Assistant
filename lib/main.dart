@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
 import 'app/app_state_scope.dart';
+import 'config/env_config.dart';
 import 'pages/app_shell_v7.dart';
+import 'services/supabase/supabase_service.dart';
 import 'state/auth_state.dart';
 import 'state/chat_state.dart';
 import 'state/settings_state.dart';
 import 'state/theme_state.dart';
 import 'ui/theme/pola_theme_v6.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await EnvConfig.load();
+  await SupabaseService.initialize();
   runApp(const POLAApp());
 }
 
@@ -24,14 +29,20 @@ class _POLAAppState extends State<POLAApp> {
   final SettingsState _settings = SettingsState();
   final ThemeState _theme = ThemeState();
   late final ChatState _chat = ChatState(settings: _settings);
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    _auth.load();
-    _chat.loadFromStorage();
-    _settings.load();
-    _theme.load();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    await _auth.load();
+    await _chat.loadFromStorage();
+    await _settings.load();
+    await _theme.load();
+    if (mounted) setState(() => _ready = true);
   }
 
   @override
@@ -60,7 +71,11 @@ class _POLAAppState extends State<POLAApp> {
             theme: light,
             darkTheme: dark,
             themeMode: _theme.mode,
-            home: const AppShellV7(),
+            home: _ready
+                ? const AppShellV7()
+                : const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  ),
           );
         },
       ),

@@ -1,3 +1,6 @@
+# Env lokal (rahasia)
+.env
+
 # Miscellaneous
 *.class
 *.log

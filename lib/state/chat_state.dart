@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../config/ai_backend_dev.dart';
 import '../models/chat_message.dart';
 import '../models/bot_reply.dart';
 import '../models/conversation.dart';
+import '../config/ai_backend.dart';
 import '../services/chat_storage.dart';
 import '../services/pola_bot.dart';
 import '../services/suggestion_engine.dart';
@@ -126,21 +126,33 @@ class ChatState extends ChangeNotifier {
     await Future<void>.delayed(const Duration(milliseconds: 600));
 
     final promptForBot = _buildBotPrompt(trimmed, attachments);
+    final backendUrl = aiBackendBaseUrl();
     BotReply reply;
-    try {
+    if (backendUrl.trim().isNotEmpty) {
+      // Permintaan: kalau AI tidak berfungsi, tetap loading sampai bisa.
+      var delayMs = 900;
+      while (true) {
+        try {
+          reply = await _bot.getResponse(
+            promptForBot,
+            webSearchEnabled: _settings.webSearchEnabled,
+            googleApiKey: _settings.googleCseApiKey,
+            googleCx: _settings.googleCseCx,
+            aiBackendBaseUrl: backendUrl,
+          );
+          break;
+        } catch (_) {
+          await Future<void>.delayed(Duration(milliseconds: delayMs));
+          delayMs = (delayMs * 1.6).clamp(900, 12000).toInt();
+        }
+      }
+    } else {
       reply = await _bot.getResponse(
         promptForBot,
         webSearchEnabled: _settings.webSearchEnabled,
         googleApiKey: _settings.googleCseApiKey,
         googleCx: _settings.googleCseCx,
-        aiBackendBaseUrl: aiBackendUrlOrDevDefault(_settings.aiBackendBaseUrl),
-        geminiApiKey: _settings.geminiApiKey,
-      );
-    } catch (_) {
-      reply = const BotReply(
-        text:
-            'Maaf, ada kendala saat mengambil jawaban dari sumber lokal. Coba lagi sebentar ya.',
-        sources: [],
+        aiBackendBaseUrl: backendUrl,
       );
     }
 
@@ -149,11 +161,7 @@ class ChatState extends ChangeNotifier {
         id: _id(),
         sender: Sender.bot,
         text: reply.text,
-        sources: reply.sources
-            .map(
-              (s) => ChatSource(title: s.title, excerpt: s.excerpt, url: s.url),
-            )
-            .toList(),
+        sources: const <ChatSource>[],
         createdAt: DateTime.now(),
       ),
     );
@@ -192,7 +200,7 @@ class ChatState extends ChangeNotifier {
     return '${cleaned.substring(0, 24)}…';
   }
 
-  String _id() => DateTime.now().microsecondsSinceEpoch.toString();
+  String _id() => ChatStorage.newId();
 
   Future<void> _save() => _storage.save(_conversations, _activeConversationId);
 }

@@ -1,8 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-/// Jika [configured] kosong dan app dijalankan dalam **debug**, pakai server lokal
-/// (`cd server && npm start`, port 8787) supaya AI jalan tanpa isi manual dulu.
-String aiBackendUrlOrDevDefault(String configured) {
+/// Base URL backend AI yang dipakai app (tanpa UI Settings).
+///
+/// - Bisa dioverride lewat `--dart-define=POLA_BACKEND_URL=http://...`
+/// - Saat debug, default otomatis:
+///   - Web/Windows/macOS/Linux/iOS: `http://127.0.0.1:8787`
+///   - Android emulator: `http://10.0.2.2:8787`
+String aiBackendBaseUrl() {
+  const configured = String.fromEnvironment('POLA_BACKEND_URL');
   final c = configured.trim();
   if (c.isNotEmpty) return c;
   if (!kDebugMode) return '';
@@ -20,3 +25,4 @@ String aiBackendUrlOrDevDefault(String configured) {
       return '';
   }
 }
+

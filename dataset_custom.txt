@@ -1,0 +1,10 @@
+Isi file ini dengan dataset/knowledge tambahan untuk POLA.
+
+Contoh format (bebas):
+- FAQ / informasi kampus
+- Kebijakan beasiswa
+- Info jurusan/lab
+
+Server akan otomatis membaca `dataset_custom.txt` (root project atau `server/dataset_custom.txt`)
+dan menambahkannya sebagai konteks saat memanggil Hugging Face.
+

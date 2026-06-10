@@ -40,6 +40,10 @@ dependencies:
   url_launcher: ^6.3.1
   google_sign_in: ^6.2.2
   google_generative_ai: ^0.4.7
+  speech_to_text: ^7.4.0
+  supabase_flutter: ^2.9.0
+  flutter_dotenv: ^5.2.1
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +71,7 @@ flutter:
   assets:
     # Paths must NOT start with `assets/` — on web Flutter prefixes `assets/`, which would
     # become `assets/assets/...` and 404. Use another top-level folder (e.g. `brand/`).
+    - .env
     - brand/logo/pola_logo.png
     - brand/knowledge/
 

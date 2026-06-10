@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/chat_message.dart';
+import 'formatted_message_text.dart';
 
 class ChatBubble extends StatelessWidget {
   const ChatBubble({super.key, required this.message});
@@ -16,9 +16,18 @@ class ChatBubble extends StatelessWidget {
     final isUser = message.sender == Sender.user;
     final colorScheme = Theme.of(context).colorScheme;
     final time = TimeOfDay.fromDateTime(message.createdAt).format(context);
-    final timeColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.75);
-    final hasSources = !isUser && message.sources.isNotEmpty;
+    final timeColor = isUser
+        ? colorScheme.onPrimaryContainer.withValues(alpha: 0.68)
+        : colorScheme.onSurfaceVariant.withValues(alpha: 0.75);
     final hasAttachments = message.attachments.isNotEmpty;
+    final bubbleColor = isUser
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
+    final bubbleFg =
+        isUser ? colorScheme.onPrimaryContainer : colorScheme.onSurface;
+    final bubbleBorder = isUser
+        ? colorScheme.primary.withValues(alpha: 0.28)
+        : colorScheme.outlineVariant.withValues(alpha: 0.28);
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -35,21 +44,23 @@ class ChatBubble extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                 decoration: BoxDecoration(
-                  color: isUser
-                      ? colorScheme.primary.withValues(alpha: 0.16)
-                      : Theme.of(context).cardTheme.color ??
-                          colorScheme.surface,
+                  color: bubbleColor,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(18),
                     topRight: const Radius.circular(18),
-                    bottomLeft: Radius.circular(isUser ? 18 : 8),
-                    bottomRight: Radius.circular(isUser ? 8 : 18),
+                    bottomLeft: Radius.circular(isUser ? 18 : 10),
+                    bottomRight: Radius.circular(isUser ? 10 : 18),
                   ),
                   border: Border.all(
-                    color: isUser
-                        ? colorScheme.primary.withValues(alpha: 0.18)
-                        : colorScheme.outlineVariant.withValues(alpha: 0.28),
+                    color: bubbleBorder,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,17 +70,13 @@ class ChatBubble extends StatelessWidget {
                       _AttachmentsGrid(attachments: message.attachments),
                       const SizedBox(height: 10),
                     ],
-                    Text(
-                      message.text,
+                    FormattedMessageText(
+                      text: message.text,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface,
+                            color: bubbleFg,
                             height: 1.32,
                           ),
                     ),
-                    if (hasSources) ...[
-                      const SizedBox(height: 10),
-                      _SourcesCard(sources: message.sources),
-                    ],
                     const SizedBox(height: 6),
                     Align(
                       alignment: Alignment.centerRight,
@@ -197,129 +204,5 @@ class _UserAvatar extends StatelessWidget {
         color: colorScheme.onSurfaceVariant,
       ),
     );
-  }
-}
-
-class _SourcesCard extends StatelessWidget {
-  const _SourcesCard({required this.sources});
-
-  final List<ChatSource> sources;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final items = sources.take(3).toList();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Sources',
-            style: Theme.of(context)
-                .textTheme
-                .labelLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          for (final s in items) ...[
-            _SourceRow(source: s),
-            if (s != items.last) const SizedBox(height: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SourceRow extends StatelessWidget {
-  const _SourceRow({required this.source});
-
-  final ChatSource source;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final url = (source.url ?? '').trim();
-    final canOpen = url.isNotEmpty;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: canOpen ? () => _openUrl(context, url) : null,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Icon(
-                canOpen ? Icons.public : Icons.description_outlined,
-                size: 16,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    source.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    source.excerpt,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  if (canOpen) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.open_in_new, size: 14, color: cs.primary),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Buka sumber',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: cs.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static Future<void> _openUrl(BuildContext context, String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!context.mounted) return;
-    if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal membuka link sumber.')),
-      );
-    }
   }
 }

@@ -1,11 +1,11 @@
 {
-    "name": "pola_app",
-    "short_name": "pola_app",
+    "name": "POLA Chatbot AI Polibatam",
+    "short_name": "POLA",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Chatbot AI POLA untuk Politeknik Negeri Batam.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

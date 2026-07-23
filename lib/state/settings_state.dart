@@ -21,6 +21,11 @@ class SettingsState extends ChangeNotifier {
   static const _kWebSearchEnabled = 'pola_web_search_enabled_v7';
   static const _kGoogleCseApiKey = 'pola_google_cse_api_key_v7';
   static const _kGoogleCseCx = 'pola_google_cse_cx_v7';
+  static const _kOnboardingDone = 'pola_onboarding_done_v8';
+  static const _kNim = 'pola_nim_v8';
+  static const _kProgramStudi = 'pola_program_studi_v8';
+  static const _kNotifications = 'pola_notifications_v8';
+  static const _kPrivacyMode = 'pola_privacy_mode_v8';
 
   String _profileName = '';
   String _username = '';
@@ -43,6 +48,11 @@ class SettingsState extends ChangeNotifier {
   bool _webSearchEnabled = false;
   String _googleCseApiKey = '';
   String _googleCseCx = '';
+  bool _onboardingCompleted = false;
+  String _nim = '';
+  String _programStudi = 'Teknik Informatika';
+  bool _notificationsEnabled = true;
+  bool _privacyMode = false;
 
   String get profileName => _profileName;
   String get username => _username;
@@ -65,6 +75,11 @@ class SettingsState extends ChangeNotifier {
   bool get webSearchEnabled => _webSearchEnabled;
   String get googleCseApiKey => _googleCseApiKey;
   String get googleCseCx => _googleCseCx;
+  bool get onboardingCompleted => _onboardingCompleted;
+  String get nim => _nim;
+  String get programStudi => _programStudi;
+  bool get notificationsEnabled => _notificationsEnabled;
+  bool get privacyMode => _privacyMode;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -89,7 +104,54 @@ class SettingsState extends ChangeNotifier {
     _webSearchEnabled = prefs.getBool(_kWebSearchEnabled) ?? false;
     _googleCseApiKey = prefs.getString(_kGoogleCseApiKey) ?? '';
     _googleCseCx = prefs.getString(_kGoogleCseCx) ?? '';
+    _onboardingCompleted = prefs.getBool(_kOnboardingDone) ?? false;
+    _nim = prefs.getString(_kNim) ?? '';
+    _programStudi = prefs.getString(_kProgramStudi) ?? 'Teknik Informatika';
+    _notificationsEnabled = prefs.getBool(_kNotifications) ?? true;
+    _privacyMode = prefs.getBool(_kPrivacyMode) ?? false;
     notifyListeners();
+  }
+
+  Future<void> setNim(String value) async {
+    final v = value.trim();
+    if (v == _nim) return;
+    _nim = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kNim, v);
+  }
+
+  Future<void> setProgramStudi(String value) async {
+    final v = value.trim();
+    if (v == _programStudi) return;
+    _programStudi = v.isEmpty ? 'Teknik Informatika' : v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kProgramStudi, v);
+  }
+
+  Future<void> setNotificationsEnabled(bool value) async {
+    if (value == _notificationsEnabled) return;
+    _notificationsEnabled = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kNotifications, value);
+  }
+
+  Future<void> setPrivacyMode(bool value) async {
+    if (value == _privacyMode) return;
+    _privacyMode = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kPrivacyMode, value);
+  }
+
+  Future<void> setOnboardingCompleted(bool value) async {
+    if (value == _onboardingCompleted) return;
+    _onboardingCompleted = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kOnboardingDone, value);
   }
 
   Future<void> setSoundEffects(bool value) async {

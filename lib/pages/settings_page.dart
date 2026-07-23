@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../app/app_state_scope.dart';
-import 'admin_page.dart';
+import 'admin/admin_dashboard_page.dart';
 import 'login_page.dart';
+import 'profile/edit_profile_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key, this.showAppBar = true});
@@ -24,7 +22,6 @@ class SettingsPage extends StatelessWidget {
       animation: Listenable.merge([auth, settings, theme]),
       builder: (context, _) {
         final isDark = theme.mode == ThemeMode.dark;
-        final isId = settings.appLanguage == 'Indonesia';
         final effectiveName = settings.profileName.isNotEmpty
             ? settings.profileName
             : auth.displayName;
@@ -36,7 +33,7 @@ class SettingsPage extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _GroupHeader('Preferensi Aplikasi'),
+            _GroupHeader('Tampilan'),
             const SizedBox(height: 8),
             _SurfaceCard(
               children: [
@@ -48,13 +45,20 @@ class SettingsPage extends StatelessWidget {
                       theme.setMode(v ? ThemeMode.dark : ThemeMode.light),
                 ),
                 _NavRow(
-                  icon: Icons.language_outlined,
-                  title: 'Bahasa',
-                  trailing: _LanguagePill(
-                    label: isId ? 'Indonesia' : 'English',
-                    code: isId ? 'ID' : 'EN',
+                  icon: Icons.palette_outlined,
+                  title: 'Warna aksen',
+                  trailing: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: theme.seedColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
                   ),
-                  onTap: () => _pickLanguage(context, settings),
+                  onTap: () => _pickSeedColor(context, theme),
                 ),
                 _SwitchRow(
                   icon: Icons.vibration_outlined,
@@ -62,17 +66,19 @@ class SettingsPage extends StatelessWidget {
                   value: settings.hapticFeedback,
                   onChanged: settings.setHapticFeedback,
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _GroupHeader('Chatbot AI'),
+            const SizedBox(height: 8),
+            _SurfaceCard(
+              children: [
                 _SwitchRow(
-                  icon: Icons.spellcheck_outlined,
-                  title: 'Koreksi ejaan otomatis',
-                  value: settings.spellCorrection,
-                  onChanged: settings.setSpellCorrection,
-                ),
-                _SwitchRow(
-                  icon: Icons.volume_up_outlined,
-                  title: 'Efek Suara',
-                  value: settings.soundEffects,
-                  onChanged: settings.setSoundEffects,
+                  icon: Icons.tips_and_updates_outlined,
+                  title: 'Saran pertanyaan lanjutan',
+                  subtitle: 'Chip rekomendasi setelah jawaban bot',
+                  value: settings.followUpSuggestions,
+                  onChanged: settings.setFollowUpSuggestions,
                 ),
               ],
             ),
@@ -82,65 +88,80 @@ class SettingsPage extends StatelessWidget {
             _SurfaceCard(
               children: [
                 _NavRow(
-                  icon: Icons.badge_outlined,
-                  title: 'Profil',
-                  trailing: _ProfilePill(name: effectiveName, handle: handle),
-                  onTap: () => _showEditProfile(context),
+                  icon: Icons.person_outline,
+                  title: auth.isLoggedIn ? auth.displayName : 'Tamu',
+                  trailing: Text(
+                    auth.isLoggedIn ? 'Keluar' : 'Masuk',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  onTap: () async {
+                    if (auth.isLoggedIn) {
+                      await auth.logout();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Anda telah keluar.')),
+                        );
+                      }
+                    } else {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const LoginPage(),
+                        ),
+                      );
+                    }
+                  },
                 ),
                 if (!auth.isLoggedIn)
                   _NavRow(
-                    icon: Icons.login,
-                    title: 'Login / Register',
+                    icon: Icons.app_registration_outlined,
+                    title: 'Buat akun baru',
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () async {
                       await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                    },
-                  )
-                else
-                  _NavRow(
-                    icon: Icons.logout,
-                    title: 'Logout',
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      await auth.logout();
-                      if (!context.mounted) return;
-                      await AppStateScope.of(context).chat.loadFromStorage();
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Anda keluar.')),
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              const LoginPage(initialLoginMode: false),
+                        ),
                       );
                     },
                   ),
-                _NavRow(
-                  icon: Icons.person_outline,
-                  title: 'Edit Profil',
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showEditProfile(context),
-                ),
-                if (auth.isLoggedIn)
-                  _NavRow(
-                    icon: Icons.lock_outline,
-                    title: 'Ganti Kata Sandi',
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showChangePassword(context),
-                  )
-                else
-                  const SizedBox.shrink(),
-                if (auth.isAdmin)
+              ],
+            ),
+            if (auth.isAdmin) ...[
+              const SizedBox(height: 16),
+              _GroupHeader('Admin'),
+              const SizedBox(height: 8),
+              _SurfaceCard(
+                children: [
                   _NavRow(
                     icon: Icons.admin_panel_settings_outlined,
-                    title: 'Admin Panel',
+                    title: 'Panel Admin',
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AdminPage()),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AdminDashboardPage(),
+                        ),
                       );
                     },
-                  )
-                else
-                  const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            _GroupHeader('Profil'),
+            const SizedBox(height: 8),
+            _SurfaceCard(
+              children: [
+                _NavRow(
+                  icon: Icons.badge_outlined,
+                  title: 'Edit Profil',
+                  trailing: _ProfilePill(name: effectiveName, handle: handle),
+                  onTap: () => showEditProfileDialog(context),
+                ),
                 _NavRow(
                   icon: Icons.info_outline,
                   title: 'Tentang Aplikasi',
@@ -152,7 +173,7 @@ class SettingsPage extends StatelessWidget {
             const SizedBox(height: 10),
             Center(
               child: Text(
-                'Versi 1.0.0',
+                'POLA v1.0.0 — Demo PBL',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -252,10 +273,12 @@ class _SwitchRow extends StatelessWidget {
     required this.title,
     required this.value,
     required this.onChanged,
+    this.subtitle,
   });
 
   final IconData icon;
   final String title;
+  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -264,6 +287,7 @@ class _SwitchRow extends StatelessWidget {
     return SwitchListTile(
       secondary: Icon(icon),
       title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
       value: value,
       onChanged: onChanged,
     );
@@ -294,45 +318,6 @@ class _NavRow extends StatelessWidget {
   }
 }
 
-class _LanguagePill extends StatelessWidget {
-  const _LanguagePill({required this.label, required this.code});
-  final String label;
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            color: cs.primary.withValues(alpha: 0.12),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.20)),
-          ),
-          child: Text(
-            code,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: cs.primary,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 List<Widget> _withDividers(List<Widget> children) {
   final out = <Widget>[];
   for (var i = 0; i < children.length; i++) {
@@ -344,188 +329,73 @@ List<Widget> _withDividers(List<Widget> children) {
   return out;
 }
 
-Future<void> _pickLanguage(BuildContext context, dynamic settings) async {
-  final current = settings.appLanguage as String;
-  final picked = await showModalBottomSheet<String>(
+Future<void> _pickSeedColor(BuildContext context, dynamic theme) async {
+  const colors = <Color>[
+    Color(0xFF2563EB),
+    Color(0xFF7C3AED),
+    Color(0xFF059669),
+    Color(0xFFDC2626),
+    Color(0xFF0891B2),
+    Color(0xFFEA580C),
+  ];
+
+  final picked = await showModalBottomSheet<Color>(
     context: context,
     showDragHandle: true,
     builder: (context) => SafeArea(
-      child: RadioGroup<String>(
-        groupValue: current,
-        onChanged: (v) => Navigator.of(context).pop(v),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            ListTile(title: Text('Bahasa')),
-            RadioListTile<String>(value: 'Indonesia', title: Text('Indonesia')),
-            RadioListTile<String>(value: 'English', title: Text('English')),
-            SizedBox(height: 8),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pilih warna aksen',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final c in colors)
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(c),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: c,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: theme.seedColor == c
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: c.withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
     ),
   );
+
   if (picked != null) {
-    await settings.setAppLanguage(picked);
+    await theme.setSeedColor(picked);
   }
-}
-
-Future<void> _showEditProfile(BuildContext context) async {
-  final auth = AppStateScope.of(context).auth;
-  final settings = AppStateScope.of(context).settings;
-
-  final effectiveName = settings.profileName.isNotEmpty
-      ? settings.profileName
-      : auth.displayName;
-  final handleBase = settings.username.isNotEmpty
-      ? settings.username
-      : auth.email.split('@').first;
-
-  final nameController = TextEditingController(text: effectiveName);
-  final userController = TextEditingController(text: handleBase);
-
-  final result = await showDialog<Object?>(
-    context: context,
-    builder: (context) {
-      var newAvatar = settings.avatarBase64;
-      return StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Edit profil'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _AvatarEditor(
-                initials: _initialsOf(effectiveName),
-                avatarBase64: newAvatar,
-                onPick: () async {
-                  final picker = ImagePicker();
-                  final image = await picker.pickImage(
-                    source: ImageSource.gallery,
-                    maxWidth: 512,
-                    imageQuality: 85,
-                  );
-                  if (image == null) return;
-                  final bytes = await image.readAsBytes();
-                  setStateDialog(() => newAvatar = _encodeImage(bytes));
-                },
-                onRemove: () => setStateDialog(() => newAvatar = ''),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Nama'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: userController,
-                decoration: const InputDecoration(labelText: 'Username'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(newAvatar),
-              child: const Text('Simpan'),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-
-  if (result is String) {
-    await settings.setProfile(
-      name: nameController.text,
-      username: userController.text,
-    );
-    await settings.setAvatarBase64(result);
-  }
-}
-
-Future<void> _showChangePassword(BuildContext context) async {
-  final auth = AppStateScope.of(context).auth;
-  if (!auth.isLoggedIn) {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
-    return;
-  }
-
-  final oldC = TextEditingController();
-  final newC = TextEditingController();
-  final confirmC = TextEditingController();
-
-  await showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Ganti kata sandi'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: oldC,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Kata sandi lama'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: newC,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Kata sandi baru'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: confirmC,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Konfirmasi kata sandi baru',
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final oldPass = oldC.text;
-            final newPass = newC.text;
-            if (newPass.isEmpty || newPass != confirmC.text) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Konfirmasi kata sandi tidak cocok.'),
-                ),
-              );
-              return;
-            }
-            final ok = await auth.changePassword(
-              email: auth.email,
-              oldPassword: oldPass,
-              newPassword: newPass,
-            );
-            if (!context.mounted) return;
-            if (!ok) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Kata sandi lama salah.')),
-              );
-              return;
-            }
-            Navigator.of(context).pop();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Kata sandi berhasil diperbarui.')),
-            );
-          },
-          child: const Text('Simpan'),
-        ),
-      ],
-    ),
-  );
 }
 
 Future<void> _showAbout(BuildContext context) async {
@@ -547,8 +417,10 @@ Future<void> _showAbout(BuildContext context) async {
             ),
             const SizedBox(height: 10),
             Text(
-              'POLA (Polibatam Assistant) hanya membahas Politeknik Negeri Batam '
-              '(beasiswa, akademik, jurusan, laboratorium, magang). Pertanyaan di luar konteks kampus tidak dilayani; pencarian web membutuhkan penyebutan Polibatam.',
+              'Implementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile — '
+              'asisten virtual untuk Politeknik Negeri Batam. Chatbot membahas '
+              'beasiswa, akademik, jurusan, laboratorium, magang, dan layanan kampus. '
+              'Pertanyaan di luar konteks Polibatam tidak dilayani.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -564,82 +436,4 @@ Future<void> _showAbout(BuildContext context) async {
       ),
     ),
   );
-}
-
-class _AvatarEditor extends StatelessWidget {
-  const _AvatarEditor({
-    required this.initials,
-    required this.avatarBase64,
-    required this.onPick,
-    required this.onRemove,
-  });
-
-  final String initials;
-  final String avatarBase64;
-  final VoidCallback onPick;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final bytes = _tryDecodeImage(avatarBase64);
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Stack(
-          children: [
-            CircleAvatar(
-              radius: 38,
-              backgroundColor: cs.primary.withValues(alpha: 0.14),
-              backgroundImage: bytes == null ? null : MemoryImage(bytes),
-              child: bytes != null
-                  ? null
-                  : Text(
-                      initials,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-            ),
-            Positioned(
-              right: -2,
-              bottom: -2,
-              child: IconButton.filledTonal(
-                tooltip: 'Ganti foto',
-                onPressed: onPick,
-                icon: const Icon(Icons.photo_camera_outlined),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: avatarBase64.isEmpty ? null : onRemove,
-          child: const Text('Hapus foto'),
-        ),
-      ],
-    );
-  }
-}
-
-String _initialsOf(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
-  final letters = parts.take(2).map((p) => p.characters.first).toList();
-  if (letters.isEmpty) return 'P';
-  return letters.join().toUpperCase();
-}
-
-String _encodeImage(List<int> bytes) =>
-    'data:image/jpeg;base64,${base64Encode(bytes)}';
-
-Uint8List? _tryDecodeImage(String base64DataUrl) {
-  if (base64DataUrl.isEmpty) return null;
-  try {
-    final idx = base64DataUrl.indexOf('base64,');
-    final payload = idx == -1
-        ? base64DataUrl
-        : base64DataUrl.substring(idx + 'base64,'.length);
-    return base64Decode(payload);
-  } catch (_) {
-    return null;
-  }
 }

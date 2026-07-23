@@ -1,0 +1,39 @@
+@startuml activity-admin-pola
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam dpi 220
+scale 1.15
+
+title Activity Diagram - Admin\nImplementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile
+
+|Admin|
+start
+:Open admin login page;
+:Enter username and password;
+
+if (Credentials valid?) then (yes)
+  :Open admin dashboard;
+  if (Choose task?) then (View chat history)
+    :Open chat history page;
+    :Inspect user conversations;
+    :Review bot responses;
+  else (Manage FAQ)
+    :Open FAQ management page;
+    if (Action selected?) then (Add)
+      :Create new FAQ entry;
+    elseif (Edit) then
+      :Update existing FAQ entry;
+    else (Delete)
+      :Remove FAQ entry;
+    endif
+    :Save changes to knowledge base;
+  endif
+  stop
+else (no)
+  :Show login error message;
+  :Retry login;
+  stop
+endif
+
+@enduml

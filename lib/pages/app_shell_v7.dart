@@ -218,12 +218,50 @@ class _PolaDrawer extends StatelessWidget {
                                             size: 20,
                                           ),
                                           padding: EdgeInsets.zero,
-                                          onSelected: (v) {
-                                            if (v == 'delete') {
+                                          onSelected: (v) async {
+                                            if (v == 'rename') {
+                                              final controller =
+                                                  TextEditingController(text: c.title);
+                                              final newTitle = await showDialog<String>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('Ubah judul chat'),
+                                                  content: TextField(
+                                                    controller: controller,
+                                                    decoration: const InputDecoration(
+                                                      labelText: 'Judul',
+                                                    ),
+                                                    autofocus: true,
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.of(context).pop(),
+                                                      child: const Text('Batal'),
+                                                    ),
+                                                    FilledButton(
+                                                      onPressed: () => Navigator.of(
+                                                        context,
+                                                      ).pop(controller.text.trim()),
+                                                      child: const Text('Simpan'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (newTitle != null &&
+                                                  newTitle.isNotEmpty &&
+                                                  context.mounted) {
+                                                chat.renameConversation(c.id, newTitle);
+                                              }
+                                            } else if (v == 'delete') {
                                               chat.deleteConversation(c.id);
                                             }
                                           },
                                           itemBuilder: (context) => const [
+                                            PopupMenuItem<String>(
+                                              value: 'rename',
+                                              child: Text('Ubah judul'),
+                                            ),
                                             PopupMenuItem<String>(
                                               value: 'delete',
                                               child: Text('Hapus chat'),

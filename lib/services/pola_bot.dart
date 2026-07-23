@@ -1,3 +1,4 @@
+import '../data/campus_media.dart';
 import '../models/bot_reply.dart';
 import 'answer_formatter.dart';
 import 'admin_kb_store.dart';
@@ -29,6 +30,7 @@ class PolaBot {
 
   Future<BotReply> getResponse(
     String question, {
+    List<({String role, String content})> conversationHistory = const [],
     bool webSearchEnabled = false,
     String googleApiKey = '',
     String googleCx = '',
@@ -46,31 +48,20 @@ class PolaBot {
         backendBaseUrl: backendUrl,
         userQuestion: cleaned,
         knowledgeHits: hits,
+        conversationHistory: conversationHistory,
       );
       final aiText = out.reply;
       if (aiText != null && aiText.isNotEmpty) {
-        // Sources memang tetap dibuat di sini, tapi UI sudah disembunyikan dan ChatState tidak menyimpan sources.
-        final sources = <BotSource>[
-          const BotSource(
-            id: 'hf-backend',
-            title: 'Hugging Face (server POLA)',
-            excerpt: 'Lewat backend Anda',
-            url: null,
+        return _withCampusMedia(
+          cleaned,
+          BotReply(
+            text: aiText,
+            imageUrls: out.images,
+            routes: out.routes,
           ),
-          ...hits.map(
-            (h) => BotSource(
-              id: h.sourceId,
-              title: h.sourceTitle,
-              excerpt: _shorten(h.text, 180),
-              url: null,
-            ),
-          ),
-        ];
-        return BotReply(text: aiText, sources: sources);
+        );
       }
-
-      // Jika backend dikonfigurasi tapi gagal/empty, biarkan caller memutuskan retry (loading terus).
-      throw Exception(out.hint ?? 'AI backend gagal memberikan jawaban.');
+      // Backend offline / gagal — lanjut ke basis pengetahuan lokal (demo tetap jalan).
     }
 
     // 2) Admin FAQ (setelah AI tidak menjawab).
@@ -246,5 +237,41 @@ class PolaBot {
     final t = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (t.length <= maxLen) return t;
     return '${t.substring(0, maxLen)}…';
+  }
+
+  /// Gabungkan media dari server + deteksi lokal (gambar peta / kartu rute).
+  BotReply _withCampusMedia(String question, BotReply reply) {
+    if (reply.imageUrls.isNotEmpty || reply.routes.isNotEmpty) {
+      return reply;
+    }
+    final hit = CampusMedia.enrich(question);
+    if (hit.isEmpty) return reply;
+
+    final images = hit.images
+        .map((e) => BotImage(url: e.url, label: e.label))
+        .toList();
+    final routes = hit.routes
+        .map(
+          (r) => BotRoute(
+            title: r.title,
+            fromLabel: r.fromLabel,
+            toLabel: r.toLabel,
+            mapsUrl: r.mapsUrl,
+            summary: r.summary,
+          ),
+        )
+        .toList();
+
+    var text = reply.text;
+    if (hit.hintText.isNotEmpty && !text.contains('peta') && !text.contains('Maps')) {
+      text = '$text\n\n${hit.hintText}';
+    }
+
+    return BotReply(
+      text: text,
+      sources: reply.sources,
+      imageUrls: images,
+      routes: routes,
+    );
   }
 }

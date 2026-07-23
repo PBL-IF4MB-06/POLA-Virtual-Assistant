@@ -8,7 +8,7 @@ class ThemeState extends ChangeNotifier {
   static const _seedKey = 'pola_theme_seed_v7';
 
   ThemeMode _mode = ThemeMode.light;
-  Color _seedColor = const Color(0xFF9CD5FF);
+  Color _seedColor = const Color(0xFF2563EB);
 
   ThemeMode get mode => _mode;
   Color get seedColor => _seedColor;

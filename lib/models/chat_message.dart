@@ -1,5 +1,7 @@
 enum Sender { user, bot }
 
+enum MessageFeedback { positive, negative }
+
 enum ChatAttachmentType { image }
 
 class ChatAttachment {
@@ -10,8 +12,12 @@ class ChatAttachment {
   });
 
   final ChatAttachmentType type;
-  final String dataUrl; // e.g. data:image/jpeg;base64,...
+  /// data:image/...;base64,... ATAU https://... untuk gambar jaringan.
+  final String dataUrl;
   final String fileName;
+
+  bool get isNetwork =>
+      dataUrl.startsWith('http://') || dataUrl.startsWith('https://');
 
   Map<String, Object?> toJson() => {
         'type': type.name,
@@ -59,6 +65,41 @@ class ChatSource {
   }
 }
 
+/// Kartu rute / navigasi di bubble bot.
+class ChatRoute {
+  const ChatRoute({
+    required this.title,
+    required this.fromLabel,
+    required this.toLabel,
+    required this.mapsUrl,
+    this.summary = '',
+  });
+
+  final String title;
+  final String fromLabel;
+  final String toLabel;
+  final String mapsUrl;
+  final String summary;
+
+  Map<String, Object?> toJson() => {
+        'title': title,
+        'fromLabel': fromLabel,
+        'toLabel': toLabel,
+        'mapsUrl': mapsUrl,
+        'summary': summary,
+      };
+
+  factory ChatRoute.fromJson(Map<String, Object?> json) {
+    return ChatRoute(
+      title: json['title'] as String? ?? '',
+      fromLabel: json['fromLabel'] as String? ?? '',
+      toLabel: json['toLabel'] as String? ?? '',
+      mapsUrl: json['mapsUrl'] as String? ?? '',
+      summary: json['summary'] as String? ?? '',
+    );
+  }
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
@@ -67,6 +108,9 @@ class ChatMessage {
     required this.createdAt,
     this.sources = const <ChatSource>[],
     this.attachments = const <ChatAttachment>[],
+    this.routes = const <ChatRoute>[],
+    this.feedback,
+    this.isError = false,
   });
 
   final String id;
@@ -75,6 +119,26 @@ class ChatMessage {
   final DateTime createdAt;
   final List<ChatSource> sources;
   final List<ChatAttachment> attachments;
+  final List<ChatRoute> routes;
+  final MessageFeedback? feedback;
+  final bool isError;
+
+  ChatMessage copyWith({
+    MessageFeedback? feedback,
+    bool clearFeedback = false,
+  }) {
+    return ChatMessage(
+      id: id,
+      sender: sender,
+      text: text,
+      createdAt: createdAt,
+      sources: sources,
+      attachments: attachments,
+      routes: routes,
+      feedback: clearFeedback ? null : (feedback ?? this.feedback),
+      isError: isError,
+    );
+  }
 
   Map<String, Object?> toJson() => {
         'id': id,
@@ -83,6 +147,9 @@ class ChatMessage {
         'createdAt': createdAt.toIso8601String(),
         'sources': sources.map((s) => s.toJson()).toList(),
         'attachments': attachments.map((a) => a.toJson()).toList(),
+        'routes': routes.map((r) => r.toJson()).toList(),
+        if (feedback != null) 'feedback': feedback!.name,
+        if (isError) 'isError': true,
       };
 
   factory ChatMessage.fromJson(Map<String, Object?> json) {
@@ -94,6 +161,18 @@ class ChatMessage {
 
     final rawSources = json['sources'] as List<dynamic>? ?? <dynamic>[];
     final rawAttachments = json['attachments'] as List<dynamic>? ?? <dynamic>[];
+    final rawRoutes = json['routes'] as List<dynamic>? ?? <dynamic>[];
+
+    MessageFeedback? feedback;
+    final feedbackName = json['feedback'] as String?;
+    if (feedbackName != null) {
+      for (final f in MessageFeedback.values) {
+        if (f.name == feedbackName) {
+          feedback = f;
+          break;
+        }
+      }
+    }
 
     return ChatMessage(
       id: json['id'] as String? ?? '',
@@ -101,15 +180,22 @@ class ChatMessage {
       text: json['text'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       sources: rawSources
-          .whereType<Map<String, Object?>>()
-          .map(ChatSource.fromJson)
-          .where((s) => s.title.trim().isNotEmpty && s.excerpt.trim().isNotEmpty)
+          .whereType<Map>()
+          .map((e) => ChatSource.fromJson(Map<String, Object?>.from(e)))
+          .where((s) => s.title.trim().isNotEmpty)
           .toList(),
       attachments: rawAttachments
-          .whereType<Map<String, Object?>>()
-          .map(ChatAttachment.fromJson)
+          .whereType<Map>()
+          .map((e) => ChatAttachment.fromJson(Map<String, Object?>.from(e)))
           .where((a) => a.dataUrl.trim().isNotEmpty)
           .toList(),
+      routes: rawRoutes
+          .whereType<Map>()
+          .map((e) => ChatRoute.fromJson(Map<String, Object?>.from(e)))
+          .where((r) => r.mapsUrl.trim().isNotEmpty)
+          .toList(),
+      feedback: feedback,
+      isError: json['isError'] as bool? ?? false,
     );
   }
 }

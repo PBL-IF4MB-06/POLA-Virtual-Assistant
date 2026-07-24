@@ -1,5 +1,15 @@
 # Env lokal (rahasia)
 .env
+server/.env
+
+# Hosting artifact — jangan commit ke git, tapi WAJIB di-upload Railway (--no-gitignore)
+server/public/
+
+# Binary / build release artifacts
+releases/*.apk
+releases/POLA-web/
+releases/POLA-website/
+*.apk
 
 # Miscellaneous
 *.class

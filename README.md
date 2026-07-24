@@ -1,4 +1,4 @@
-# POLA — Virtual Assistant
+# POLA — ChatBot
 
 **POLA** (*Polibatam Assistant*) adalah asisten virtual berbasis AI untuk **Politeknik Negeri Batam (Polibatam)**. Aplikasi ini membantu mahasiswa, calon mahasiswa, dan civitas kampus mendapatkan informasi seputar akademik, jurusan, beasiswa, laboratorium, magang, dan layanan kampus lainnya.
 

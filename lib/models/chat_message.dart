@@ -1,5 +1,7 @@
 enum Sender { user, bot }
 
+enum MessageFeedback { positive, negative }
+
 enum ChatAttachmentType { image }
 
 class ChatAttachment {
@@ -67,6 +69,8 @@ class ChatMessage {
     required this.createdAt,
     this.sources = const <ChatSource>[],
     this.attachments = const <ChatAttachment>[],
+    this.feedback,
+    this.isError = false,
   });
 
   final String id;
@@ -75,6 +79,24 @@ class ChatMessage {
   final DateTime createdAt;
   final List<ChatSource> sources;
   final List<ChatAttachment> attachments;
+  final MessageFeedback? feedback;
+  final bool isError;
+
+  ChatMessage copyWith({
+    MessageFeedback? feedback,
+    bool clearFeedback = false,
+  }) {
+    return ChatMessage(
+      id: id,
+      sender: sender,
+      text: text,
+      createdAt: createdAt,
+      sources: sources,
+      attachments: attachments,
+      feedback: clearFeedback ? null : (feedback ?? this.feedback),
+      isError: isError,
+    );
+  }
 
   Map<String, Object?> toJson() => {
         'id': id,
@@ -83,6 +105,8 @@ class ChatMessage {
         'createdAt': createdAt.toIso8601String(),
         'sources': sources.map((s) => s.toJson()).toList(),
         'attachments': attachments.map((a) => a.toJson()).toList(),
+        if (feedback != null) 'feedback': feedback!.name,
+        if (isError) 'isError': true,
       };
 
   factory ChatMessage.fromJson(Map<String, Object?> json) {
@@ -94,6 +118,17 @@ class ChatMessage {
 
     final rawSources = json['sources'] as List<dynamic>? ?? <dynamic>[];
     final rawAttachments = json['attachments'] as List<dynamic>? ?? <dynamic>[];
+
+    MessageFeedback? feedback;
+    final feedbackName = json['feedback'] as String?;
+    if (feedbackName != null) {
+      for (final f in MessageFeedback.values) {
+        if (f.name == feedbackName) {
+          feedback = f;
+          break;
+        }
+      }
+    }
 
     return ChatMessage(
       id: json['id'] as String? ?? '',
@@ -110,6 +145,8 @@ class ChatMessage {
           .map(ChatAttachment.fromJson)
           .where((a) => a.dataUrl.trim().isNotEmpty)
           .toList(),
+      feedback: feedback,
+      isError: json['isError'] as bool? ?? false,
     );
   }
 }

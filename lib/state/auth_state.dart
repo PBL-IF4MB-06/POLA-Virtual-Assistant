@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../config/google_oauth_config.dart';
 import '../services/supabase/supabase_profile_repository.dart';
@@ -14,6 +17,9 @@ class AuthState extends ChangeNotifier {
 
   static const oauthGooglePasswordPlaceholder = '__oauth_google__';
 
+  /// Deep link OAuth callback untuk Android/iOS (daftarkan di Supabase Dashboard).
+  static const mobileOAuthRedirect = 'ac.id.polibatam.pola://login-callback/';
+
   static const List<String> _googleScopes = <String>[
     'email',
     'https://www.googleapis.com/auth/userinfo.profile',
@@ -21,6 +27,8 @@ class AuthState extends ChangeNotifier {
 
   static const String demoAdminEmail = 'admin@pola.app';
   static const String demoAdminPassword = 'admin12345';
+  static const String supabaseAdminEmail = 'admin@polibatam.ac.id';
+  static const String supabaseAdminPassword = 'AdminPola2026!';
 
   bool _isLoggedIn = false;
   String? _displayName;
@@ -31,30 +39,78 @@ class AuthState extends ChangeNotifier {
   bool _sessionUsedGoogle = false;
   bool _supabaseIsAdmin = false;
   GoogleSignIn? _googleSignInCache;
+  StreamSubscription<sb.AuthState>? _authSub;
 
   bool get isLoggedIn => _isLoggedIn;
   String get displayName => _displayName ?? 'Guest';
   String get email => _email ?? 'guest@pola.app';
   String? get userId => _userId;
   bool get usesSupabase => SupabaseService.isReady;
-  bool get isAdmin => _isLoggedIn &&
-      (SupabaseService.isReady ? _supabaseIsAdmin : _admins.contains(email));
+  bool get isAdmin {
+    if (!_isLoggedIn) return false;
+    if (_supabaseIsAdmin) return true;
+    return _admins.contains(_normalizeEmail(email));
+  }
+
+  String get authBackendLabel => SupabaseService.isReady
+      ? 'Supabase Cloud'
+      : SupabaseService.isConfigured
+          ? 'Lokal (Supabase gagal init)'
+          : 'Lokal';
+
+  /// Google sign-in hanya jika OAuth client ID sudah dikonfigurasi.
+  bool get isGoogleSignInAvailable => GoogleOauthConfig.isConfigured;
 
   Future<void> load() async {
+    await _loadLocalUsers();
+
     if (SupabaseService.isReady) {
+      await _authSub?.cancel();
+      _authSub = SupabaseService.client.auth.onAuthStateChange.listen((data) {
+        final user = data.session?.user;
+        if (data.event == sb.AuthChangeEvent.signedIn && user != null) {
+          unawaited(_hydrateFromSupabase(user));
+          final provider = user.appMetadata['provider']?.toString() ?? '';
+          _sessionUsedGoogle = provider.contains('google');
+        } else if (data.event == sb.AuthChangeEvent.signedOut) {
+          // Jangan hapus sesi lokal saat Supabase tidak punya session cloud.
+          if (_userId != null) {
+            _continueAsGuestInternal(persist: false);
+          }
+        }
+      });
+
       final session = SupabaseService.client.auth.currentSession;
       if (session?.user != null) {
         await _hydrateFromSupabase(session!.user);
       } else {
-        _continueAsGuestInternal(persist: false);
+        await _restoreLocalSession();
       }
       return;
     }
 
-    await _loadLocal();
+    await _restoreLocalSession();
   }
 
-  Future<void> _loadLocal() async {
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  static String oauthRedirectUrl() {
+    if (kIsWeb) {
+      final base = Uri.base;
+      var path = base.path.isEmpty ? '/' : base.path;
+      if (!path.endsWith('/')) path = '$path/';
+      return '${base.origin}$path';
+    }
+    return mobileOAuthRedirect;
+  }
+
+  static String _oauthRedirectUrl() => oauthRedirectUrl();
+
+  Future<void> _loadLocalUsers() async {
     final prefs = await SharedPreferences.getInstance();
     final rawUsers = prefs.getStringList(_kUsers) ?? const <String>[];
     _users
@@ -63,12 +119,15 @@ class AuthState extends ChangeNotifier {
         rawUsers
             .map((e) => e.split('|'))
             .where((p) => p.length == 2)
-            .map((p) => MapEntry(p[0], p[1])),
+            .map((p) => MapEntry(_normalizeEmail(p[0]), p[1])),
       );
 
     _admins
       ..clear()
-      ..addAll(prefs.getStringList(_kAdmins) ?? const <String>[]);
+      ..addAll(
+        (prefs.getStringList(_kAdmins) ?? const <String>[])
+            .map(_normalizeEmail),
+      );
 
     _users[demoAdminEmail] = demoAdminPassword;
     await prefs.setStringList(
@@ -79,15 +138,39 @@ class AuthState extends ChangeNotifier {
       _admins.add(demoAdminEmail);
       await prefs.setStringList(_kAdmins, _admins.toList()..sort());
     }
+  }
 
+  Future<void> _restoreLocalSession() async {
+    final prefs = await SharedPreferences.getInstance();
     final active = prefs.getString(_kActiveEmail);
-    if (active != null && active.isNotEmpty && _users.containsKey(active)) {
-      final storedPass = _users[active];
+    final activeKey = active == null ? null : _normalizeEmail(active);
+    if (activeKey != null &&
+        activeKey.isNotEmpty &&
+        _users.containsKey(activeKey)) {
+      final storedPass = _users[activeKey];
       _sessionUsedGoogle = storedPass == oauthGooglePasswordPlaceholder;
-      _setLoggedInInternal(active, persist: false);
+      _setLoggedInInternal(activeKey, persist: false);
     } else {
       _continueAsGuestInternal(persist: false);
     }
+  }
+
+  bool _tryLocalLogin(String email, String password) {
+    final key = _normalizeEmail(email);
+    final stored = _users[key];
+    if (stored == null || stored != password) return false;
+    _sessionUsedGoogle = stored == oauthGooglePasswordPlaceholder;
+    unawaited(_setLoggedInInternal(key, persist: true));
+    return true;
+  }
+
+  Future<bool> _tryLocalLoginAsync(String email, String password) async {
+    final key = _normalizeEmail(email);
+    final stored = _users[key];
+    if (stored == null || stored != password) return false;
+    _sessionUsedGoogle = stored == oauthGooglePasswordPlaceholder;
+    await _setLoggedInInternal(key, persist: true);
+    return true;
   }
 
   void continueAsGuest() {
@@ -143,57 +226,97 @@ class AuthState extends ChangeNotifier {
     return _loginWithGoogleLocal();
   }
 
+  static bool get _isMobileNative =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   Future<String?> _loginWithGoogleSupabase() async {
     try {
-      if (kIsWeb) {
-        await SupabaseService.client.auth.signInWithOAuth(
-          OAuthProvider.google,
-          redirectTo: Uri.base.origin,
-        );
-        return null;
+      // Android/iOS + serverClientId: native Google Sign-In (lebih stabil).
+      final canUseNative = _isMobileNative &&
+          GoogleOauthConfig.serverClientId.trim().isNotEmpty;
+
+      if (canUseNative) {
+        return _loginWithGoogleNativeSupabase();
       }
 
-      if (GoogleOauthConfig.webClientId.isEmpty &&
-          GoogleOauthConfig.serverClientId.isEmpty) {
-        return 'OAuth Google belum dikonfigurasi untuk Supabase.';
-      }
-
-      final account = await _googleSignIn().signIn();
-      if (account == null) return 'Masuk dengan Google dibatalkan.';
-
-      final auth = await account.authentication;
-      final idToken = auth.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        return 'Token Google tidak tersedia.';
-      }
-
-      await SupabaseService.client.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: auth.accessToken,
+      // Web atau mobile tanpa native config: OAuth redirect via Supabase.
+      await SupabaseService.client.auth.signInWithOAuth(
+        sb.OAuthProvider.google,
+        redirectTo: _oauthRedirectUrl(),
+        queryParams: const {'prompt': 'select_account'},
+        authScreenLaunchMode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
       );
-
-      final user = SupabaseService.client.auth.currentUser;
-      if (user == null) return 'Gagal masuk dengan Google via Supabase.';
-      await _hydrateFromSupabase(user);
-      _sessionUsedGoogle = true;
       return null;
+    } on sb.AuthException catch (e) {
+      debugPrint('loginWithGoogle AuthException: ${e.message}');
+      return 'Gagal masuk Google: ${e.message}';
     } catch (e, st) {
       debugPrint('loginWithGoogle Supabase failed: $e\n$st');
-      return 'Gagal masuk dengan Google. Pastikan provider Google aktif di Supabase Dashboard.';
+      final msg = e.toString();
+      if (msg.contains('ApiException: 10') || msg.contains('sign_in_failed')) {
+        return 'Google Sign-In gagal (konfigurasi).\n\n'
+            'Pastikan:\n'
+            '1. Provider Google aktif di Supabase Dashboard\n'
+            '2. GOOGLE_SERVER_CLIENT_ID di .env\n'
+            '3. SHA-1 debug/release terdaftar di Google Cloud Console';
+      }
+      return 'Gagal masuk dengan Google. Periksa koneksi internet dan konfigurasi OAuth.';
     }
   }
 
+  Future<String?> _loginWithGoogleNativeSupabase() async {
+    if (!GoogleOauthConfig.isConfigured) {
+      return 'Google Sign-In belum dikonfigurasi.\n\n'
+          'Isi GOOGLE_SERVER_CLIENT_ID di .env (Web Client ID dari Google Cloud), '
+          'dan aktifkan provider Google di Supabase Dashboard.';
+    }
+
+    final account = await _googleSignIn().signIn();
+    if (account == null) return 'Masuk dengan Google dibatalkan.';
+
+    final auth = await account.authentication;
+    final idToken = auth.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      return 'Token Google tidak tersedia.\n\n'
+          'Pastikan SHA-1 APK terdaftar di Google Cloud Console '
+          'dan GOOGLE_SERVER_CLIENT_ID sudah benar.';
+    }
+
+    await SupabaseService.client.auth.signInWithIdToken(
+      provider: sb.OAuthProvider.google,
+      idToken: idToken,
+      accessToken: auth.accessToken,
+    );
+
+    final user = SupabaseService.client.auth.currentUser;
+    if (user == null) return 'Gagal masuk dengan Google via Supabase.';
+    await _hydrateFromSupabase(user);
+    _sessionUsedGoogle = true;
+    return null;
+  }
+
   Future<String?> _loginWithGoogleLocal() async {
-    if (kIsWeb && GoogleOauthConfig.webClientId.isEmpty) {
-      return 'OAuth web belum dikonfigurasi. Jalankan aplikasi dengan '
-          '--dart-define=GOOGLE_WEB_CLIENT_ID=... (lihat lib/config/google_oauth_config.dart).';
+    if (!GoogleOauthConfig.isConfigured) {
+      if (kIsWeb) {
+        return 'OAuth Google belum dikonfigurasi. Isi GOOGLE_WEB_CLIENT_ID di .env '
+            '(lihat lib/config/google_oauth_config.dart).';
+      }
+      if (_isMobileNative) {
+        return 'Google Sign-In belum dikonfigurasi.\n\n'
+            'Isi GOOGLE_SERVER_CLIENT_ID di .env (Web Client ID dari Google Cloud) '
+            'dan daftarkan SHA-1 APK di Google Cloud Console.';
+      }
+      return 'OAuth Google belum dikonfigurasi. Isi GOOGLE_WEB_CLIENT_ID di .env.';
     }
     try {
       final account = await _googleSignIn().signIn();
       if (account == null) return 'Masuk dengan Google dibatalkan.';
 
-      final email = account.email.trim();
+      final email = _normalizeEmail(account.email);
       if (email.isEmpty) return 'Akun Google tidak menyediakan alamat email.';
 
       if (!_users.containsKey(email)) {
@@ -236,14 +359,22 @@ class AuthState extends ChangeNotifier {
 
   static String _normalizeEmail(String email) => email.trim().toLowerCase();
 
-  Future<String?> _completeSupabaseSession(AuthResponse res) async {
+  Future<String?> _completeSupabaseSession(sb.AuthResponse res) async {
     final user = res.user ?? SupabaseService.client.auth.currentUser;
     final session = res.session ?? SupabaseService.client.auth.currentSession;
     if (user == null || session == null) {
       return 'Gagal masuk. Session tidak tersedia — coba lagi.';
     }
+    try {
+      await const SupabaseProfileRepository().ensureCurrentProfile();
+    } catch (e, st) {
+      debugPrint('ensureCurrentProfile after auth: $e\n$st');
+    }
     await _hydrateFromSupabase(user);
     _sessionUsedGoogle = false;
+    if (!_isLoggedIn) {
+      return 'Gagal memuat profil pengguna. Coba masuk lagi.';
+    }
     return null;
   }
 
@@ -252,31 +383,38 @@ class AuthState extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
+    final key = _normalizeEmail(email);
+
+    // Prioritas akun lokal (demo admin / register offline).
+    if (await _tryLocalLoginAsync(key, password)) {
+      return null;
+    }
+
     if (SupabaseService.isReady) {
-      final key = _normalizeEmail(email);
       try {
         final res = await SupabaseService.client.auth.signInWithPassword(
           email: key,
           password: password,
         );
         return await _completeSupabaseSession(res);
-      } on AuthException catch (e) {
+      } on sb.AuthException catch (e) {
         debugPrint('loginWithPassword AuthException: ${e.message}');
+        SupabaseService.markAuthUnreachable();
+        if (_isNetworkAuthError(e)) {
+          return _networkAuthMessage();
+        }
         return _mapSupabaseAuthError(e);
       } catch (e, st) {
         debugPrint('loginWithPassword Supabase: $e\n$st');
+        SupabaseService.markAuthUnreachable();
+        if (_isNetworkAuthError(e)) {
+          return _networkAuthMessage();
+        }
         return 'Gagal masuk. Periksa koneksi internet.';
       }
     }
 
-    final key = email.trim();
-    final stored = _users[key];
-    if (stored == null || stored != password) {
-      return 'Email atau kata sandi salah.';
-    }
-    _sessionUsedGoogle = false;
-    _setLoggedInInternal(key, persist: true);
-    return null;
+    return 'Email atau kata sandi salah.';
   }
 
   /// `null` = sukses & langsung masuk, selain itu pesan error / instruksi.
@@ -309,8 +447,12 @@ class AuthState extends ChangeNotifier {
           password: password,
         );
         return await _completeSupabaseSession(loginRes);
-      } on AuthException catch (e) {
+      } on sb.AuthException catch (e) {
         debugPrint('register AuthException: ${e.message}');
+        SupabaseService.markAuthUnreachable();
+        if (_isNetworkAuthError(e) || _shouldFallbackRegisterToLocal(e)) {
+          return _registerLocal(key, password);
+        }
         final mapped = _mapSupabaseAuthError(e);
         if (mapped.toLowerCase().contains('sudah terdaftar')) {
           return '$mapped\n\nGunakan tab Masuk dengan password yang sama.';
@@ -323,21 +465,62 @@ class AuthState extends ChangeNotifier {
         return mapped;
       } catch (e, st) {
         debugPrint('register Supabase: $e\n$st');
-        return 'Registrasi gagal. Periksa koneksi internet.';
+        SupabaseService.markAuthUnreachable();
+        return _registerLocal(key, password);
       }
     }
 
+    return _registerLocal(key, password);
+  }
+
+  Future<String?> _registerLocal(String key, String password) async {
     if (_users.containsKey(key)) {
-      return 'Email sudah terdaftar.';
+      return 'Email sudah terdaftar. Gunakan tab Masuk.';
     }
     _sessionUsedGoogle = false;
     _users[key] = password;
-    _persistUsers();
-    _setLoggedInInternal(key, persist: true);
+    await _persistUsersAsync();
+    await _setLoggedInInternal(key, persist: true);
     return null;
   }
 
-  static String _mapSupabaseAuthError(AuthException e) {
+  static bool _shouldTryLocalFallback(sb.AuthException e) {
+    final msg = e.message.toLowerCase();
+    return msg.contains('invalid login') ||
+        msg.contains('invalid credentials') ||
+        msg.contains('wrong password') ||
+        msg.contains('user not found');
+  }
+
+  static bool _isNetworkAuthError(Object e) {
+    final msg = '${e is sb.AuthException ? e.message : e}'.toLowerCase();
+    return msg.contains('failed to fetch') ||
+        msg.contains('clientexception') ||
+        msg.contains('socketexception') ||
+        msg.contains('network') ||
+        msg.contains('connection refused') ||
+        msg.contains('connection error') ||
+        msg.contains('host lookup') ||
+        msg.contains('name could not be resolved') ||
+        msg.contains('handshake') ||
+        msg.contains('timed out');
+  }
+
+  static String _networkAuthMessage() =>
+      'Tidak dapat terhubung ke Supabase.\n\n'
+      'Periksa koneksi internet atau URL project di file .env. '
+      'Untuk demo offline, gunakan akun lokal: admin@pola.app / admin12345';
+
+  static bool _shouldFallbackRegisterToLocal(sb.AuthException e) {
+    final msg = e.message.toLowerCase();
+    return (msg.contains('signup') && msg.contains('disabled')) ||
+        (msg.contains('signups') && msg.contains('disabled')) ||
+        msg.contains('rate') ||
+        msg.contains('too many') ||
+        msg.contains('429');
+  }
+
+  static String _mapSupabaseAuthError(sb.AuthException e) {
     final msg = (e.message).toLowerCase();
     if (msg.contains('confirm') ||
         msg.contains('verified') ||
@@ -376,18 +559,42 @@ class AuthState extends ChangeNotifier {
     return e.message;
   }
 
+  Future<String?> requestPasswordReset(String email) async {
+    final key = email.trim();
+    if (key.isEmpty || !_looksLikeEmail(key)) {
+      return 'Masukkan alamat email yang valid.';
+    }
+
+    if (SupabaseService.isReady) {
+      try {
+        await SupabaseService.client.auth.resetPasswordForEmail(key);
+        return null;
+      } on sb.AuthException catch (e) {
+        return e.message;
+      } catch (_) {
+        return 'Gagal mengirim email reset. Coba lagi.';
+      }
+    }
+
+    return 'Reset password via email membutuhkan konfigurasi Supabase.\n'
+        'Untuk akun demo lokal, hubungi admin atau buat akun baru.';
+  }
+
+  static bool _looksLikeEmail(String s) =>
+      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(s);
+
   Future<bool> changePassword({
     required String email,
     required String oldPassword,
     required String newPassword,
   }) async {
-    final key = email.trim();
+    final key = _normalizeEmail(email);
     if (key.isEmpty || newPassword.isEmpty) return false;
 
     if (SupabaseService.isReady) {
       try {
         await SupabaseService.client.auth.updateUser(
-          UserAttributes(password: newPassword),
+          sb.UserAttributes(password: newPassword),
         );
         return true;
       } catch (_) {
@@ -403,7 +610,7 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<void> grantAdmin(String email) async {
-    final e = email.trim();
+    final e = _normalizeEmail(email);
     if (e.isEmpty) return;
 
     if (SupabaseService.isReady) {
@@ -418,7 +625,7 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<void> revokeAdmin(String email) async {
-    final e = email.trim();
+    final e = _normalizeEmail(email);
     if (e.isEmpty) return;
 
     if (SupabaseService.isReady) {
@@ -439,10 +646,10 @@ class AuthState extends ChangeNotifier {
     await _hydrateFromSupabase(user);
   }
 
-  Future<void> _hydrateFromSupabase(User user) async {
+  Future<void> _hydrateFromSupabase(sb.User user) async {
     _isLoggedIn = true;
     _userId = user.id;
-    _email = user.email ?? '';
+    _email = _normalizeEmail(user.email ?? '');
     final meta = user.userMetadata ?? {};
     _displayName = (meta['full_name'] as String?)?.trim() ??
         (meta['name'] as String?)?.trim() ??
@@ -450,7 +657,11 @@ class AuthState extends ChangeNotifier {
 
     _supabaseIsAdmin = false;
     try {
-      final profile = await const SupabaseProfileRepository().fetchCurrent();
+      var profile = await const SupabaseProfileRepository().fetchCurrent();
+      if (profile == null) {
+        await const SupabaseProfileRepository().ensureCurrentProfile();
+        profile = await const SupabaseProfileRepository().fetchCurrent();
+      }
       if (profile != null) {
         if (profile.displayName?.trim().isNotEmpty == true) {
           _displayName = profile.displayName!.trim();
@@ -465,29 +676,27 @@ class AuthState extends ChangeNotifier {
   }
 
   void _setLoggedIn(String email) {
-    _setLoggedInInternal(email, persist: true);
+    unawaited(_setLoggedInInternal(email, persist: true));
   }
 
-  void _setLoggedInInternal(
+  Future<void> _setLoggedInInternal(
     String email, {
     required bool persist,
     String? displayName,
-  }) {
-    if (email.isEmpty) return;
+  }) async {
+    final key = _normalizeEmail(email);
+    if (key.isEmpty) return;
     _isLoggedIn = true;
-    _email = email;
+    _email = key;
+    _userId = null;
+    _supabaseIsAdmin = false;
     final dn = displayName?.trim();
     _displayName =
-        (dn != null && dn.isNotEmpty) ? dn : email.split('@').first;
-    if (_admins.isEmpty) {
-      _admins.add(email);
-      SharedPreferences.getInstance()
-          .then((p) => p.setStringList(_kAdmins, _admins.toList()..sort()));
-    }
+        (dn != null && dn.isNotEmpty) ? dn : key.split('@').first;
     notifyListeners();
     if (persist) {
-      SharedPreferences.getInstance()
-          .then((p) => p.setString(_kActiveEmail, email));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kActiveEmail, key);
     }
   }
 

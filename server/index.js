@@ -7,7 +7,6 @@ import dotenv from 'dotenv';
 import express from 'express';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Selalu baca server/.env (bukan cwd proyek), supaya `node index.js` dari folder mana pun tetap jalan.
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 function envTrim(name) {
@@ -17,8 +16,31 @@ function envTrim(name) {
 }
 
 const PORT = Number(envTrim('PORT')) || 8787;
+const KOBOI_API_KEY = envTrim('KOBOI_API_KEY');
+const KOBOI_BASE_URL = (envTrim('KOBOI_BASE_URL') || 'https://api.koboillm.com/v1').replace(
+  /\/$/,
+  '',
+);
+const KOBOI_MODEL = envTrim('KOBOI_MODEL') || 'gemini/gemini-2.5-flash';
+const GEMINI_API_KEY = envTrim('GEMINI_API_KEY');
+const GEMINI_MODEL = envTrim('GEMINI_MODEL') || 'gemini-2.0-flash';
 const HF_TOKEN = envTrim('HF_TOKEN');
 const HF_MODEL = envTrim('HF_MODEL') || 'moonshotai/Kimi-K2-Instruct-0905';
+
+const AI_PROVIDER = KOBOI_API_KEY
+  ? 'koboillm'
+  : GEMINI_API_KEY
+    ? 'gemini'
+    : HF_TOKEN
+      ? 'huggingface'
+      : 'none';
+
+const ACTIVE_MODEL =
+  AI_PROVIDER === 'koboillm'
+    ? KOBOI_MODEL
+    : AI_PROVIDER === 'gemini'
+      ? GEMINI_MODEL
+      : HF_MODEL;
 
 const SYSTEM = `Kamu adalah POLA (Polibatam Assistant), asisten resmi untuk Politeknik Negeri Batam.
 Aturan:
@@ -37,8 +59,7 @@ async function loadDatasetCustom() {
     try {
       const raw = await readFile(p, 'utf8');
       const t = String(raw || '').trim();
-      if (!t) continue;
-      return t;
+      if (t) return t;
     } catch (_) {}
   }
   return '';
@@ -62,35 +83,155 @@ function buildUserPrompt(message, knowledgeSnippets) {
   return b.join('\n');
 }
 
-async function callHfRouter({ token, model, userText }) {
-  const url = 'https://router.huggingface.co/v1/chat/completions';
+function normalizeHistory(conversationHistory) {
+  if (!Array.isArray(conversationHistory)) return [];
+  return conversationHistory
+    .map((row) => {
+      const role = row?.role === 'assistant' ? 'assistant' : 'user';
+      const content = String(row?.content || '').trim();
+      if (!content) return null;
+      return { role, content };
+    })
+    .filter(Boolean)
+    .slice(-10);
+}
+
+async function callOpenAiChat({
+  url,
+  apiKey,
+  model,
+  userText,
+  conversationHistory = [],
+}) {
+  const messages = [{ role: 'system', content: SYSTEM.trim() }];
+  for (const turn of normalizeHistory(conversationHistory)) {
+    messages.push(turn);
+  }
+  messages.push({ role: 'user', content: userText });
+
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
-      messages: [
-        { role: 'system', content: SYSTEM.trim() },
-        { role: 'user', content: userText },
-      ],
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
     }),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg =
-      (data && typeof data === 'object' && data.error ? String(data.error) : '') ||
+      data?.error?.message ||
+      (typeof data?.error === 'string' ? data.error : '') ||
       res.statusText ||
-      'Hugging Face request failed';
+      'AI request failed';
     const err = new Error(msg);
     err.status = res.status;
     throw err;
   }
+
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text === 'string' && text.trim()) return text.trim();
   throw Object.assign(new Error('Model tidak mengembalikan teks.'), { status: 502 });
+}
+
+async function callKoboiLLM({ apiKey, baseUrl, model, userText, conversationHistory = [] }) {
+  return callOpenAiChat({
+    url: `${baseUrl}/chat/completions`,
+    apiKey,
+    model,
+    userText,
+    conversationHistory,
+  });
+}
+
+async function callGemini({ apiKey, model, userText, conversationHistory = [] }) {
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/` +
+    `${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const contents = normalizeHistory(conversationHistory).map((turn) => ({
+    role: turn.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: turn.content }],
+  }));
+  contents.push({ role: 'user', parts: [{ text: userText }] });
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM.trim() }] },
+      contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      data?.error?.message ||
+      (typeof data?.error === 'string' ? data.error : '') ||
+      res.statusText ||
+      'Gemini request failed';
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts)
+    ? parts.map((p) => p?.text || '').join('').trim()
+    : '';
+  if (text) return text;
+  throw Object.assign(new Error('Model Gemini tidak mengembalikan teks.'), { status: 502 });
+}
+
+async function callHfRouter({ token, model, userText, conversationHistory = [] }) {
+  return callOpenAiChat({
+    url: 'https://router.huggingface.co/v1/chat/completions',
+    apiKey: token,
+    model,
+    userText,
+    conversationHistory,
+  });
+}
+
+async function generateReply({ userText, conversationHistory }) {
+  if (KOBOI_API_KEY) {
+    return callKoboiLLM({
+      apiKey: KOBOI_API_KEY,
+      baseUrl: KOBOI_BASE_URL,
+      model: KOBOI_MODEL,
+      userText,
+      conversationHistory,
+    });
+  }
+  if (GEMINI_API_KEY) {
+    return callGemini({
+      apiKey: GEMINI_API_KEY,
+      model: GEMINI_MODEL,
+      userText,
+      conversationHistory,
+    });
+  }
+  if (HF_TOKEN) {
+    return callHfRouter({
+      token: HF_TOKEN,
+      model: HF_MODEL,
+      userText,
+      conversationHistory,
+    });
+  }
+  const err = new Error(
+    'AI belum dikonfigurasi. Isi KOBOI_API_KEY, GEMINI_API_KEY, atau HF_TOKEN di server/.env.',
+  );
+  err.status = 503;
+  throw err;
 }
 
 const app = express();
@@ -99,19 +240,17 @@ app.use(express.json({ limit: '512kb' }));
 
 app.get('/health', (_req, res) => {
   res.json({
-    ok: true,
+    ok: AI_PROVIDER !== 'none',
+    provider: AI_PROVIDER,
+    koboiConfigured: Boolean(KOBOI_API_KEY),
+    geminiConfigured: Boolean(GEMINI_API_KEY),
     hfConfigured: Boolean(HF_TOKEN),
-    model: HF_MODEL,
+    model: ACTIVE_MODEL,
   });
 });
 
 app.post('/v1/chat', async (req, res) => {
-  if (!HF_TOKEN) {
-    return res.status(503).json({
-      error: 'HF_TOKEN belum di-set di file .env server.',
-    });
-  }
-  const { message, knowledgeSnippets } = req.body || {};
+  const { message, knowledgeSnippets, conversationHistory } = req.body || {};
   const msg = typeof message === 'string' ? message : '';
   if (!msg.trim()) {
     return res.status(400).json({ error: 'Field "message" wajib diisi.' });
@@ -122,24 +261,25 @@ app.post('/v1/chat', async (req, res) => {
     const fullPrompt = dataset
       ? `${prompt}\n\nBasis pengetahuan tambahan (dataset_custom.txt):\n${dataset}`
       : prompt;
-    const reply = await callHfRouter({
-      token: HF_TOKEN,
-      model: HF_MODEL,
+    const reply = await generateReply({
       userText: fullPrompt,
+      conversationHistory,
     });
-    return res.json({ reply });
+    return res.json({ reply, provider: AI_PROVIDER });
   } catch (e) {
     const code = typeof e.status === 'number' ? e.status : 0;
     const status = code >= 400 && code < 600 ? code : 502;
     return res.status(status).json({
-      error: e.message || 'Gagal memanggil Hugging Face.',
+      error: e.message || 'Gagal memanggil AI.',
     });
   }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`POLA AI Backend berjalan di http://localhost:${PORT}  (POST /v1/chat, GET /health)`);
-  if (!HF_TOKEN) {
-    console.warn('[POLA] HF_TOKEN kosong — isi server/.env lalu restart.');
+  console.log(
+    `POLA AI Backend (${AI_PROVIDER}) di http://localhost:${PORT}  (POST /v1/chat, GET /health)`,
+  );
+  if (AI_PROVIDER === 'none') {
+    console.warn('[POLA] Isi KOBOI_API_KEY di server/.env lalu restart.');
   }
 });

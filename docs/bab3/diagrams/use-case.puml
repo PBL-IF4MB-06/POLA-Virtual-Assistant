@@ -1,0 +1,47 @@
+@startuml use-case-pola
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle stickman
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam dpi 220
+scale 1.25
+
+title Diagram Use Case - Implementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile
+
+actor User as user
+actor Admin as admin
+
+rectangle "Sistem POLA Chatbot" {
+  usecase "Login / Register" as UC1
+  usecase "Lanjut sebagai Tamu" as UC2
+  usecase "Mulai Chat Baru" as UC3
+  usecase "Kirim Pesan Teks" as UC4
+  usecase "Kirim Lampiran Gambar" as UC5
+  usecase "Lihat Riwayat Chat" as UC6
+  usecase "Lihat Informasi Kampus" as UC7
+  usecase "Simpan Bookmark" as UC8
+  usecase "Ubah Pengaturan" as UC9
+  usecase "Kelola FAQ Admin" as UC10
+}
+
+user --> UC1
+user --> UC2
+user --> UC3
+user --> UC4
+user --> UC5
+user --> UC6
+user --> UC7
+user --> UC8
+user --> UC9
+
+admin --> UC1
+admin --> UC6
+admin --> UC10
+
+UC5 ..> UC4 : <<extend>>
+UC8 ..> UC4 : <<extend>>
+UC10 ..> UC1 : <<include>>
+
+@enduml

@@ -1,0 +1,662 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"/>
+<title>BAB III Perancangan Sistem POLA</title>
+<style>
+@page{margin:2cm;size:A4}
+body{font-family:"Times New Roman",Times,serif;font-size:11pt;line-height:1.45;color:#111;max-width:17cm;margin:0 auto;padding:1cm}
+h2{font-size:13pt;margin-top:14px;border-bottom:1px solid #333}
+h3{font-size:12pt;margin-top:10px}
+h4{font-size:11pt;margin-top:8px;font-style:italic}
+table{font-size:9.5pt}
+figure{text-align:center;margin:12px 0;page-break-inside:avoid}
+figcaption{font-size:10pt;font-style:italic;margin-top:4px}
+hr{border:none;border-top:1px solid #ccc;margin:12px 0}
+p{text-align:justify;margin:6px 0}
+.cover{text-align:center;margin-bottom:16px}
+</style></head><body>
+<div class="cover">
+<h1>BAB III<br/>PERANCANGAN SISTEM</h1>
+<p><strong>Implementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile</strong><br/>
+Kode PBL: IF-4MB-06 | Teknik Informatika | Politeknik Negeri Batam</p>
+</div>
+<p># BAB III PERANCANGAN SISTEM
+
+Bab ini menjelaskan perancangan sistem POLA (<em>Polibatam Assistant</em>) yang telah direvisi agar selaras dengan implementasi aplikasi saat ini (versi 1.0.0, App Shell v8). Perancangan mencakup gambaran umum arsitektur, diagram use case, skenario use case, activity diagram, entity-relationship diagram (ERD), serta perancangan antarmuka berbasis screenshot aplikasi aktual.
+
+<hr/>
+
+<h2>3.1 Arsitektur Sistem</h2>
+
+Aplikasi POLA dibangun dengan arsitektur <strong>client–server</strong> yang terdiri dari empat lapisan utama:
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Lapisan</td><td>Teknologi</td><td>Fungsi</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Presentasi</strong></td><td>Flutter 3.x (Android, Web, Windows)</td><td>Antarmuka pengguna: Beranda, Chatbot, Kampus, Profil</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Logika Aplikasi</strong></td><td>Dart (ChangeNotifier/State)</td><td>AuthState, ChatState, SettingsState, BookmarkState, NotificationState</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Backend AI</strong></td><td>Node.js + Express</td><td>Endpoint `/chat`, integrasi Hugging Face Router, basis pengetahuan lokal</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Data</strong></td><td>SharedPreferences + Supabase (PostgreSQL)</td><td>Riwayat chat lokal; sinkronisasi profil, percakapan, FAQ saat login</td></tr></table>
+
+Alur umum: pengguna berinteraksi melalui aplikasi Flutter → pesan chat dikirim ke backend AI → backend memproses dengan PolaBot (rule-based + LLM + FAQ) → jawaban dikembalikan ke aplikasi dan disimpan secara lokal maupun ke Supabase jika pengguna login.
+
+<h3>Gambar 3.1 Gambaran Umum Sistem</h3>
+
+<figure><img src="images/01-gambaran-umum-sistem.png" alt="Gambaran Umum Sistem POLA" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Gambaran Umum Sistem POLA</figcaption></figure>
+
+<em>Gambar 3.1 menunjukkan interaksi antara pengguna/admin dengan aplikasi Flutter, backend AI Node.js, layanan eksternal (Hugging Face, Google OAuth, Google CSE opsional), dan database Supabase.</em>
+
+<hr/>
+
+<h2>3.2 Perancangan Fungsional</h2>
+
+<h3>3.2.1 Kebutuhan Fungsional</h3>
+
+Tabel 3.1 merangkum kebutuhan fungsional sistem berdasarkan fitur yang telah diimplementasikan.
+
+<strong>Tabel 3.1 Kebutuhan Fungsional Sistem</strong>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>No</td><td>Kebutuhan</td><td>Deskripsi</td><td>Status</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-01</td><td>Autentikasi</td><td>Login email/password, registrasi, Google Sign-In, mode tamu</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-02</td><td>Onboarding</td><td>Pengenalan fitur aplikasi dalam 3 slide interaktif</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-03</td><td>Chatbot AI</td><td>Tanya jawab informasi kampus via backend AI</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-04</td><td>Multi-sesi chat</td><td>Buat, pilih, dan hapus percakapan</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-05</td><td>Input multimodal</td><td>Teks, speech-to-text, lampiran gambar</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-06</td><td>Quick prompts</td><td>Pertanyaan cepat dari beranda dan chip saran</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-07</td><td>Info Kampus</td><td>Grid 8 modul (Akademik, Beasiswa, Magang, dll.)</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-08</td><td>Pencarian Kampus AI</td><td>Halaman pencarian terintegrasi chatbot</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-09</td><td>Pengumuman</td><td>Daftar pengumuman kampus di beranda</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-10</td><td>Bookmark</td><td>Simpan jawaban penting untuk referensi</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-11</td><td>Pengaturan</td><td>Tema gelap, warna aksen, haptik, profil</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-12</td><td>Admin FAQ</td><td>Kelola basis pengetahuan FAQ (admin)</td><td>✅</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>F-13</td><td>Web Search</td><td>Google CSE opsional untuk pertanyaan Polibatam</td><td>✅</td></tr></table>
+
+<h3>3.2.2 Kebutuhan Non-Fungsional</h3>
+
+<strong>Tabel 3.2 Kebutuhan Non-Fungsional Sistem</strong>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>No</td><td>Aspek</td><td>Deskripsi</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>NF-01</td><td>Performa</td><td>Respons chat ≤ 15 detik (tergantung backend AI)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>NF-02</td><td>Ketersediaan</td><td>Mode offline: riwayat lokal tetap dapat dibaca</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>NF-03</td><td>Keamanan</td><td>Token API disimpan di server; OAuth via Supabase</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>NF-04</td><td>Portabilitas</td><td>Satu codebase Flutter untuk Android, Web, Windows</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>NF-05</td><td>Usability</td><td>Navigasi 4 tab, Material Design 3, tema gelap</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>NF-06</td><td>Skalabilitas</td><td>Backend AI terpisah, database Supabase cloud</td></tr></table>
+
+<hr/>
+
+<h3>3.2.3 Diagram Use Case</h3>
+
+Diagram use case menggambarkan interaksi antara aktor <strong>Pengguna (Mahasiswa/Tamu)</strong> dan <strong>Admin</strong> dengan sistem POLA Virtual Assistant. Diagram dibuat sesuai simbol standar UML dengan relasi <em>include</em> dan <em>extend</em>.
+
+<strong>Aktor:</strong>
+<li><strong>Pengguna</strong> — mahasiswa, calon mahasiswa, atau tamu yang menggunakan fitur chatbot dan informasi kampus.</li>
+<li><strong>Admin</strong> — pengelola FAQ dan basis pengetahuan sistem.</li>
+
+<figure><img src="images/03-use-case-diagram.png" alt="Diagram Use Case POLA" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Diagram Use Case POLA</figcaption></figure>
+
+<strong>Gambar 3.2 Diagram Use Case POLA Virtual Assistant</strong>
+
+<strong>Daftar Use Case:</strong>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Kode</td><td>Nama Use Case</td><td>Aktor</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-001</td><td>Login / Register / Tamu</td><td>Pengguna, Admin</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-002</td><td>Onboarding Aplikasi</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-003</td><td>Mulai Chat Baru</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-004</td><td>Kirim Pesan Teks</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-005</td><td>Kirim Lampiran Gambar</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-006</td><td>Input Suara (Speech-to-Text)</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-007</td><td>Lihat Riwayat Chat</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-008</td><td>Kelola Bookmark</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-009</td><td>Lihat Info Kampus</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-010</td><td>Cari Info Kampus AI</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-011</td><td>Lihat Pengumuman</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-012</td><td>Ubah Pengaturan</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-013</td><td>Edit Profil</td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>UC-014</td><td>Kelola FAQ</td><td>Admin</td></tr></table>
+
+<hr/>
+
+<h3>3.2.4 Skenario Use Case</h3>
+
+Berikut skenario use case utama yang direvisi sesuai alur aplikasi App Shell v8.
+
+<hr/>
+
+<h4>Tabel 3.3 Skenario Use Case UC-001 — Login / Register / Tamu</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-001</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Login / Register / Tamu</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Memungkinkan pengguna mengakses fitur penuh atau menggunakan aplikasi sebagai tamu</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna dapat masuk dengan email/password, mendaftar akun baru, login via Google Sign-In (Supabase OAuth), atau melanjutkan sebagai tamu tanpa autentikasi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna, Admin</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna membuka menu Login / Daftar dari tab Profil atau Pengaturan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna membuka halaman LoginPage<br/>2. Pengguna memilih tab Masuk atau Daftar<br/>3. Pengguna mengisi email dan password (serta konfirmasi password jika daftar)<br/>4. Pengguna menekan tombol Masuk/Daftar <strong>atau</strong> Lanjutkan dengan Google<br/>5. Sistem memverifikasi kredensial via Supabase Auth<br/>6. Jika sukses, profil dimuat dan riwayat chat disinkronkan<br/>7. Aplikasi kembali ke halaman sebelumnya dengan status login aktif</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Email/password tidak valid → tampilkan pesan validasi form<br/>A2. Kredensial salah → tampilkan SnackBar error<br/>A3. Email sudah terdaftar → pesan registrasi gagal<br/>A4. Google Sign-In dibatalkan → tetap di halaman login<br/>A5. Pengguna pilih <strong>Lanjut sebagai Tamu</strong> → akses fitur tanpa sinkronisasi cloud<br/>A6. Reset password via dialog lupa password</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Pengguna login (data tersinkron Supabase) atau tetap tamu</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.4 Skenario Use Case UC-002 — Onboarding Aplikasi</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-002</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Onboarding Aplikasi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Memperkenalkan fitur utama POLA kepada pengguna baru</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Tiga slide interaktif menjelaskan chatbot AI, info kampus, dan navigasi aplikasi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna pertama kali membuka aplikasi (onboarding belum selesai)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Splash Screen selesai (1,5 detik)<br/>2. Sistem menampilkan OnboardingPage (3 slide)<br/>3. Pengguna geser atau tap "Lanjut" pada setiap slide<br/>4. Pengguna tap "Mulai" di slide terakhir<br/>5. Sistem menyimpan `onboardingCompleted = true` ke SharedPreferences<br/>6. Navigasi ke AppShellV8</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Onboarding sudah pernah selesai → langsung ke AppShellV8 dari Splash</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Pengguna berada di halaman utama aplikasi</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.5 Skenario Use Case UC-003 — Mulai Chat Baru</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-003</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Mulai Chat Baru</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Memulai percakapan baru agar riwayat tidak tercampur</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna membuat sesi chat baru dari header tab Chatbot</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di tab Chatbot (ChatTabPage)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna menekan ikon <strong>Chat baru</strong> (+) di header<br/>2. Sistem memanggil `ChatState.startNewConversation()`<br/>3. Conversation baru dibuat dengan ID unik<br/>4. Percakapan baru ditetapkan sebagai aktif<br/>5. Area chat dikosongkan dan siap menerima pesan<br/>6. Riwayat disimpan ke SharedPreferences</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Gagal simpan storage → pesan error, percakapan tetap di memori</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Percakapan baru aktif dan siap digunakan</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.6 Skenario Use Case UC-004 — Kirim Pesan Teks</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-004</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Kirim Pesan Teks</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Mengirim pertanyaan dan menerima jawaban AI</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna mengirim pesan teks; sistem memproses via backend AI (PolaBot + Hugging Face Router)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di ChatPage dengan Conversation aktif</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna mengetik pertanyaan di ChatInputBar<br/>2. Pengguna menekan tombol kirim<br/>3. Pesan user ditampilkan sebagai bubble chat<br/>4. Typing indicator "Mengetik…" aktif<br/>5. Sistem mengirim request ke backend AI (`POST /chat`)<br/>6. Backend memproses: intent matching, FAQ, LLM inference<br/>7. Jawaban bot ditampilkan pada bubble chat<br/>8. Chip saran lanjutan ditampilkan (jika diaktifkan)<br/>9. Riwayat disimpan ke SharedPreferences</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Pesan kosong → tidak diproses<br/>A2. Backend offline → banner peringatan + retry otomatis (max 3x)<br/>A3. Pertanyaan di luar konteks Polibatam → bot menolak dengan pesan standar<br/>A4. Quick prompt dari Beranda → prompt otomatis terkirim</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Jawaban bot tampil dan riwayat tersimpan</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.7 Skenario Use Case UC-005 — Kirim Lampiran Gambar</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-005</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Kirim Lampiran Gambar</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Mengirim gambar sebagai konteks pertanyaan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna memilih gambar dari galeri perangkat sebagai lampiran pesan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di ChatPage</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna menekan tombol lampiran (📎) di input bar<br/>2. Sistem membuka image picker<br/>3. Pengguna memilih gambar<br/>4. Gambar dikonversi ke Base64 (dataUrl)<br/>5. ChatAttachment ditambahkan ke pesan<br/>6. Pesan + gambar dikirim ke pipeline AI<br/>7. Preview gambar ditampilkan di bubble chat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Pengguna membatalkan pemilihan → tidak ada perubahan<br/>A2. Format tidak didukung → pesan error</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Gambar terlampir dan diproses sistem</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.8 Skenario Use Case UC-006 — Input Suara (Speech-to-Text)</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-006</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Input Suara (Speech-to-Text)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Memasukkan pertanyaan via suara</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna menggunakan mikrofon; speech-to-text mengisi kolom input</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di ChatPage, perangkat mendukung STT</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna menekan ikon mikrofon<br/>2. Sistem meminta izin mikrofon<br/>3. SpeechInputService aktif (locale sesuai bahasa app)<br/>4. Pengguna berbicara<br/>5. Transkripsi teks muncul di input bar<br/>6. Pengguna menekan kirim → lanjut UC-004</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Browser tidak mendukung STT → pesan gunakan Chrome<br/>A2. Tidak ada suara terdeteksi → prompt ulang</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Teks hasil transkripsi siap dikirim</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.9 Skenario Use Case UC-007 — Lihat Riwayat Chat</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-007</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Lihat Riwayat Chat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Meninjau dan mengelola percakapan sebelumnya</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna membuka daftar semua Conversation dari Profil atau header Chatbot</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna memiliki minimal satu percakapan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna buka ChatHistoryPage (dari Profil atau ikon Riwayat)<br/>2. Sistem menampilkan daftar percakapan (judul + preview)<br/>3. Pengguna pilih percakapan<br/>4. Sistem set sebagai Conversation aktif<br/>5. ChatPage menampilkan pesan percakapan tersebut</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Riwayat kosong → empty state "Belum ada chat"<br/>A2. Hapus percakapan → konfirmasi, minimal 1 sesi tetap ada</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Percakapan terpilih ditampilkan di layar chat</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.10 Skenario Use Case UC-008 — Kelola Bookmark</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-008</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Kelola Bookmark</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Menyimpan jawaban penting untuk referensi cepat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna bookmark/unbookmark jawaban bot dari bubble chat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Terdapat jawaban bot pada percakapan aktif</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna tap ikon bookmark pada bubble bot<br/>2. Sistem simpan pertanyaan + jawaban ke BookmarkState<br/>3. Data persisten di SharedPreferences<br/>4. Pengguna buka BookmarksPage dari Profil<br/>5. Daftar bookmark ditampilkan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Unbookmark → entri dihapus dari daftar</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Bookmark tersimpan atau dihapus</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.11 Skenario Use Case UC-009 — Lihat Info Kampus</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-009</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Lihat Info Kampus</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Membaca informasi kampus per modul</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna menjelajahi grid 8 modul di CampusHubPage</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di tab Kampus</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna melihat grid modul (Akademik, Kalender, Pengumuman, Beasiswa, Magang, Prestasi, Peta, Dosen)<br/>2. Pengguna tap salah satu modul<br/>3. Sistem buka InfoDetailPage dengan konten dari CampusCatalog<br/>4. Pengguna membaca informasi<br/>5. Opsional: tap "Tanya Chatbot" → alih ke tab Chatbot dengan prompt kontekstual</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Modul tanpa konten → redirect ke chatbot dengan prompt default</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Informasi kampus ditampilkan</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.12 Skenario Use Case UC-010 — Cari Info Kampus AI</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-010</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Cari Info Kampus AI</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Mencari informasi kampus via chatbot</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Halaman CampusSearchPage dengan pencarian terintegrasi AI</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di tab Kampus</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna tap banner/ikon Pencarian Kampus AI<br/>2. CampusSearchPage terbuka<br/>3. Pengguna ketik kata kunci<br/>4. Sistem arahkan query ke chatbot<br/>5. Jawaban AI ditampilkan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Query kosong → tidak diproses</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Hasil pencarian ditampilkan via chatbot</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.13 Skenario Use Case UC-011 — Lihat Pengumuman</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-011</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Lihat Pengumuman Kampus</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Membaca pengumuman terbaru kampus</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengumuman ditampilkan di Beranda dan modul Kampus</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di tab Beranda</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Sistem tampilkan kartu pengumuman horizontal<br/>2. Pengguna tap salah satu pengumuman<br/>3. AnnouncementDetailPage menampilkan detail lengkap<br/>4. Status baca diperbarui (NotificationState)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Tidak ada pengumuman → section kosong</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Detail pengumuman ditampilkan</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.14 Skenario Use Case UC-012 — Ubah Pengaturan</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-012</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Ubah Pengaturan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Mengubah preferensi aplikasi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna mengatur tampilan, chatbot, dan akun di SettingsPage</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna membuka Pengaturan dari tab Profil</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna buka SettingsPage<br/>2. Pengguna ubah opsi: Mode Gelap, Warna aksen, Haptik, Saran lanjutan<br/>3. Sistem simpan ke SharedPreferences via SettingsState/ThemeState<br/>4. Perubahan langsung diterapkan pada UI</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Logout dari menu Akun → sesi Supabase dihapus<br/>A2. Buat akun baru → navigasi ke LoginPage (mode daftar)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Pengaturan berhasil diterapkan</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.15 Skenario Use Case UC-013 — Edit Profil</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-013</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Edit Profil</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Memperbarui identitas pengguna lokal</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Pengguna mengubah nama, username, avatar, NIM, program studi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Pengguna</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Pengguna berada di ProfileHubPage atau SettingsPage</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Pengguna tap "Edit Profil"<br/>2. Dialog form terbuka<br/>3. Pengguna isi/ubah nama, username, NIM, prodi, avatar<br/>4. Sistem simpan ke SettingsState + SharedPreferences<br/>5. Header profil diperbarui</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Field kosong → gunakan default (Tamu / Polibatam)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>Profil pengguna diperbarui</td></tr></table>
+
+<hr/>
+
+<h4>Tabel 3.16 Skenario Use Case UC-014 — Kelola FAQ (Admin)</h4>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Identifikasi</td><td></td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nomor</strong></td><td>UC-014</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Nama</strong></td><td>Kelola FAQ</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Tujuan</strong></td><td>Mengelola basis pengetahuan FAQ sistem</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Deskripsi</strong></td><td>Admin menambah, mengedit, dan menghapus entri FAQ (kb_entries)</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Aktor</strong></td><td>Admin</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Awal</strong></td><td>Admin login dengan role `admin` di Supabase</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Utama</strong></td><td>1. Admin buka AdminPage<br/>2. Sistem muat daftar FAQ dari AdminKbStore/Supabase<br/>3. Admin pilih Tambah/Edit/Hapus<br/>4. Admin isi pertanyaan dan jawaban<br/>5. Sistem validasi dan simpan ke database<br/>6. Daftar FAQ diperbarui</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Skenario Alternatif</strong></td><td>A1. Bukan admin → akses ditolak<br/>A2. Input kosong → validasi gagal<br/>A3. FAQ kosong → tampilkan empty state</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td><strong>Kondisi Akhir</strong></td><td>FAQ berhasil diperbarui</td></tr></table>
+
+<hr/>
+
+<h3>3.2.5 Activity Diagram</h3>
+
+<h4>Activity Diagram Pengguna (User)</h4>
+
+Diagram berikut menggambarkan alur aktivitas pengguna dari splash screen hingga interaksi dengan fitur-fitur utama aplikasi.
+
+<figure><img src="images/04-activity-diagram-user.png" alt="Activity Diagram User" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Activity Diagram User</figcaption></figure>
+
+<strong>Gambar 3.3 Activity Diagram Pengguna</strong>
+
+<h4>Activity Diagram Admin</h4>
+
+Diagram berikut menggambarkan alur admin dalam mengelola FAQ basis pengetahuan.
+
+<figure><img src="images/05-activity-diagram-admin.png" alt="Activity Diagram Admin" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Activity Diagram Admin</figcaption></figure>
+
+<strong>Gambar 3.4 Activity Diagram Admin</strong>
+
+<hr/>
+
+<h3>3.2.6 ER Diagram</h3>
+
+ERD menggambarkan struktur data sistem POLA yang menggunakan <strong>penyimpanan hybrid</strong>: SharedPreferences untuk mode tamu/offline, dan Supabase PostgreSQL untuk sinkronisasi cloud saat login.
+
+<figure><img src="images/06-er-diagram.png" alt="ER Diagram POLA" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>ER Diagram POLA</figcaption></figure>
+
+<strong>Gambar 3.5 ER Diagram POLA Virtual Assistant</strong>
+
+<h4>Entitas Supabase (PostgreSQL)</h4>
+
+<strong>1. Profile</strong> — profil pengguna (extends auth.users)
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>UUID (PK)</td><td>Sama dengan auth.users.id</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>email</td><td>TEXT</td><td>Email unik</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>display_name</td><td>TEXT</td><td>Nama tampilan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>username</td><td>TEXT</td><td>Username</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>avatar_url</td><td>TEXT</td><td>URL foto profil</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>role</td><td>user_role</td><td>`user` atau `admin`</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>created_at</td><td>TIMESTAMPTZ</td><td>Waktu dibuat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>Waktu diperbarui</td></tr></table>
+
+<strong>2. UserSettings</strong> — preferensi pengguna (JSON blob)
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>user_id</td><td>UUID (PK, FK)</td><td>Referensi Profile</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>settings</td><td>JSONB</td><td>Tema, bahasa, web search, dll.</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>Waktu diperbarui</td></tr></table>
+
+<strong>3. Conversation</strong> — sesi percakapan cloud
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>UUID (PK)</td><td>ID unik percakapan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>user_id</td><td>UUID (FK)</td><td>Pemilik percakapan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>title</td><td>TEXT</td><td>Judul percakapan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>is_active</td><td>BOOLEAN</td><td>Percakapan aktif</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>created_at</td><td>TIMESTAMPTZ</td><td>Waktu dibuat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>Waktu diperbarui</td></tr></table>
+
+<strong>4. Message</strong> — pesan dalam percakapan
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>UUID (PK)</td><td>ID unik pesan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>conversation_id</td><td>UUID (FK)</td><td>Referensi Conversation</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>sender</td><td>message_sender</td><td>`user` atau `bot`</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>text</td><td>TEXT</td><td>Isi pesan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>sources</td><td>JSONB</td><td>Daftar ChatSource</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>attachments</td><td>JSONB</td><td>Daftar ChatAttachment</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>created_at</td><td>TIMESTAMPTZ</td><td>Waktu dibuat</td></tr></table>
+
+<strong>5. KbEntry</strong> — FAQ admin
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>UUID (PK)</td><td>ID FAQ</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>question</td><td>TEXT</td><td>Pertanyaan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>answer</td><td>TEXT</td><td>Jawaban</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>is_published</td><td>BOOLEAN</td><td>Status publikasi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>created_by</td><td>UUID (FK)</td><td>Admin pembuat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>created_at</td><td>TIMESTAMPTZ</td><td>Waktu dibuat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>Waktu diperbarui</td></tr></table>
+
+<strong>6. KbDocument</strong> — dokumen panjang (RAG opsional)
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>UUID (PK)</td><td>ID dokumen</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>title</td><td>TEXT</td><td>Judul</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>content</td><td>TEXT</td><td>Konten penuh</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>source_path</td><td>TEXT</td><td>Path sumber</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>is_published</td><td>BOOLEAN</td><td>Status publikasi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>created_by</td><td>UUID (FK)</td><td>Admin pembuat</td></tr></table>
+
+<h4>Entitas Lokal (SharedPreferences)</h4>
+
+<strong>7. LocalConversation</strong> — percakapan lokal
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>TEXT (PK)</td><td>ID unik</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>title</td><td>TEXT</td><td>Judul</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>createdAt</td><td>DateTime</td><td>Waktu dibuat</td></tr></table>
+
+<strong>8. LocalChatMessage</strong> — pesan lokal
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>TEXT (PK)</td><td>ID unik</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>sender</td><td>ENUM</td><td>user / bot</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>text</td><td>TEXT</td><td>Isi pesan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>createdAt</td><td>DateTime</td><td>Waktu dibuat</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>sources</td><td>JSON</td><td>ChatSource[]</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>attachments</td><td>JSON</td><td>ChatAttachment[]</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>feedback</td><td>ENUM</td><td>positive / negative</td></tr></table>
+
+<strong>9. BookmarkItem</strong> — bookmark jawaban
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>Atribut</td><td>Tipe</td><td>Keterangan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>id</td><td>TEXT (PK)</td><td>ID unik</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>question</td><td>TEXT</td><td>Pertanyaan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>answer</td><td>TEXT</td><td>Jawaban</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>savedAt</td><td>DateTime</td><td>Waktu disimpan</td></tr></table>
+
+<strong>Tabel 3.17 Hubungan Antar Entitas</strong>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>No</td><td>Entitas 1</td><td>Relasi</td><td>Entitas 2</td><td>Kardinalitas</td><td>Penjelasan</td></tr></table>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>1</td><td>Profile</td><td>Memiliki</td><td>UserSettings</td><td>1 : 1</td><td>Satu user satu settings</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>2</td><td>Profile</td><td>Memiliki</td><td>Conversation</td><td>1 : N</td><td>Satu user banyak percakapan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>3</td><td>Conversation</td><td>Memiliki</td><td>Message</td><td>1 : N</td><td>Satu percakapan banyak pesan</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>4</td><td>Message</td><td>Memuat</td><td>ChatAttachment</td><td>1 : N</td><td>Lampiran disimpan sebagai JSONB</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>5</td><td>Message</td><td>Memuat</td><td>ChatSource</td><td>1 : N</td><td>Sumber jawaban sebagai JSONB</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>6</td><td>Profile</td><td>Mengelola</td><td>KbEntry</td><td>1 : N</td><td>Admin kelola FAQ</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>7</td><td>LocalConversation</td><td>Memiliki</td><td>LocalChatMessage</td><td>1 : N</td><td>Riwayat lokal multi-sesi</td></tr></table>
+<table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0"><tr><td>8</td><td>Profile</td><td>Menyimpan</td><td>BookmarkItem</td><td>1 : N</td><td>Bookmark per pengguna (lokal)</td></tr></table>
+
+<hr/>
+
+<h3>3.2.7 Perancangan Antarmuka (Wireframe)</h3>
+
+Perancangan antarmuka menggunakan <strong>screenshot aplikasi aktual</strong> (resolusi tinggi, deviceScaleFactor 3×) agar representatif terhadap implementasi final. Navigasi utama menggunakan <strong>App Shell v8</strong> dengan 4 tab: Beranda, Chatbot, Kampus, dan Profil.
+
+<hr/>
+
+<h4>1. Wireframe Splash Screen</h4>
+
+Halaman pembuka dengan animasi logo POLA dan indikator loading.
+
+<strong>Fitur utama:</strong>
+<li>1. Logo POLA dengan animasi pulse</li>
+<li>2. Judul "POLA Chatbot"</li>
+<li>3. Subtitle institusi</li>
+<li>4. Indikator loading AI</li>
+
+<figure><img src="wireframes/15-wireframe-splash.png" alt="Wireframe Splash" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Splash</figcaption></figure>
+
+<strong>Gambar 3.6 Wireframe Splash Screen</strong>
+
+<hr/>
+
+<h4>2. Wireframe Onboarding</h4>
+
+Pengenalan fitur untuk pengguna pertama kali (3 slide).
+
+<strong>Fitur utama:</strong>
+<li>1. Ilustrasi fitur per slide</li>
+<li>2. Judul dan deskripsi fitur</li>
+<li>3. Indikator halaman (dots)</li>
+<li>4. Tombol Lanjut / Mulai</li>
+
+<figure><img src="wireframes/16-wireframe-onboarding.png" alt="Wireframe Onboarding" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Onboarding</figcaption></figure>
+
+<strong>Gambar 3.7 Wireframe Onboarding</strong>
+
+<hr/>
+
+<h4>3. Wireframe Halaman Beranda</h4>
+
+Tab utama dengan hero banner, aksi cepat, contoh pertanyaan, dan pengumuman.
+
+<strong>Fitur utama:</strong>
+<li>1. Hero banner gradient dengan sapaan personal</li>
+<li>2. Search bar shortcut ke chatbot</li>
+<li>3. Aksi cepat (Beasiswa, KRS, Pengumuman)</li>
+<li>4. Contoh pertanyaan chatbot (popular questions)</li>
+<li>5. Scroll horizontal pengumuman kampus</li>
+<li>6. Ringkasan riwayat chat</li>
+<li>7. Bottom navigation 4 tab</li>
+
+<strong>Tujuan:</strong> Memudahkan akses cepat ke chatbot dan informasi kampus.
+
+<figure><img src="wireframes/07-wireframe-beranda.png" alt="Wireframe Beranda" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Beranda</figcaption></figure>
+
+<strong>Gambar 3.8 Wireframe Halaman Beranda</strong>
+
+<hr/>
+
+<h4>4. Wireframe Halaman Chatbot</h4>
+
+Tab chatbot AI untuk interaksi percakapan.
+
+<strong>Fitur utama:</strong>
+<li>1. Header dengan status backend AI</li>
+<li>2. Tombol Chat baru dan Riwayat</li>
+<li>3. Area bubble chat (user & bot)</li>
+<li>4. Quick prompts / suggestion chips</li>
+<li>5. Typing indicator saat bot memproses</li>
+<li>6. Input bar: teks, mikrofon, lampiran, kirim</li>
+
+<figure><img src="wireframes/08-wireframe-chatbot.png" alt="Wireframe Chatbot Kosong" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Chatbot Kosong</figcaption></figure>
+
+<strong>Gambar 3.9 Wireframe Halaman Chatbot (Kosong)</strong>
+
+<figure><img src="wireframes/09-wireframe-chatbot-jawaban.png" alt="Wireframe Chatbot Jawaban" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Chatbot Jawaban</figcaption></figure>
+
+<strong>Gambar 3.10 Wireframe Halaman Chatbot (Dengan Jawaban AI)</strong>
+
+<hr/>
+
+<h4>5. Wireframe Halaman Kampus</h4>
+
+Pusat informasi kampus dengan grid modul.
+
+<strong>Fitur utama:</strong>
+<li>1. App bar "Pusat Kampus POLA"</li>
+<li>2. Banner Pencarian Kampus AI</li>
+<li>3. Grid 8 modul (Akademik, Kalender, Pengumuman, Beasiswa, Magang, Prestasi, Peta, Dosen)</li>
+<li>4. Detail modul dengan tombol "Tanya Chatbot"</li>
+
+<figure><img src="wireframes/10-wireframe-kampus-hub.png" alt="Wireframe Kampus Hub" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Kampus Hub</figcaption></figure>
+
+<strong>Gambar 3.11 Wireframe Halaman Kampus Hub</strong>
+
+<figure><img src="wireframes/11-wireframe-detail-kampus.png" alt="Wireframe Detail Kampus" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Detail Kampus</figcaption></figure>
+
+<strong>Gambar 3.12 Wireframe Detail Modul Kampus (Beasiswa)</strong>
+
+<hr/>
+
+<h4>6. Wireframe Halaman Profil</h4>
+
+Tab profil pengguna dengan menu akun dan fitur.
+
+<strong>Fitur utama:</strong>
+<li>1. Header gradient dengan avatar dan nama</li>
+<li>2. Tombol Edit Profil</li>
+<li>3. Menu Login/Daftar, Riwayat Chat, Bookmark, Pengaturan</li>
+<li>4. Tombol shortcut "Buka Chatbot AI"</li>
+
+<figure><img src="wireframes/12-wireframe-profil.png" alt="Wireframe Profil" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Profil</figcaption></figure>
+
+<strong>Gambar 3.13 Wireframe Halaman Profil</strong>
+
+<hr/>
+
+<h4>7. Wireframe Halaman Login / Register</h4>
+
+Autentikasi pengguna dengan multi-metode.
+
+<strong>Fitur utama:</strong>
+<li>1. Tab Masuk / Daftar</li>
+<li>2. Form email dan password</li>
+<li>3. Toggle tampil/sembunyikan password</li>
+<li>4. Tombol Masuk / Daftar</li>
+<li>5. Lanjutkan dengan Google</li>
+<li>6. Lanjut sebagai Tamu</li>
+<li>7. Lupa password</li>
+
+<figure><img src="wireframes/13-wireframe-login-register.png" alt="Wireframe Login" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Login</figcaption></figure>
+
+<strong>Gambar 3.14 Wireframe Halaman Login / Register</strong>
+
+<hr/>
+
+<h4>8. Wireframe Halaman Pengaturan</h4>
+
+Preferensi aplikasi dan akun.
+
+<strong>Fitur utama:</strong>
+<li>1. Grup Tampilan: Mode Gelap, Warna aksen, Haptik</li>
+<li>2. Grup Chatbot AI: Saran pertanyaan lanjutan</li>
+<li>3. Grup Akun: Login/Logout, Buat akun</li>
+<li>4. Grup Profil: Edit Profil, Tentang Aplikasi</li>
+
+<figure><img src="wireframes/14-wireframe-pengaturan.png" alt="Wireframe Pengaturan" style="max-width:100%;border:1px solid #ccc;border-radius:8px"/><figcaption>Wireframe Pengaturan</figcaption></figure>
+
+<strong>Gambar 3.15 Wireframe Halaman Pengaturan</strong>
+
+<hr/>
+
+<h2>3.3 Kesimpulan Perancangan</h2>
+
+Perancangan sistem POLA Virtual Assistant telah disesuaikan dengan implementasi aktual proyek PBL, meliputi:
+
+<li>1. <strong>Arsitektur client–server</strong> dengan Flutter, Node.js backend AI, dan Supabase.</li>
+<li>2. <strong>14 use case</strong> yang mencakup autentikasi, chatbot multimodal, info kampus, bookmark, pengaturan, dan admin FAQ.</li>
+<li>3. <strong>Activity diagram</strong> terpisah untuk alur pengguna dan admin.</li>
+<li>4. <strong>ERD hybrid</strong> yang mendukung penyimpanan lokal (SharedPreferences) dan cloud (Supabase).</li>
+<li>5. <strong>Wireframe berbasis screenshot</strong> resolusi tinggi dari aplikasi v1.0.0 agar akurat dan tidak blur.</li>
+
+Perancangan ini menjadi acuan implementasi (BAB IV) dan pengujian sistem (BAB IV–V).
+
+<hr/>
+
+<em>Dokumen dihasilkan otomatis dari codebase POLA v1.0.0 — App Shell v8.</em>
+<em>Diagram: `node docs/bab3/generate_diagrams.mjs` | Wireframe: `node docs/bab3/copy_wireframes.mjs`</em>
+</p>
+</body></html>

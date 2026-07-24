@@ -25,6 +25,8 @@ class SupabaseConfig {
         ),
       );
 
+  static String get publishableKey => anonKey;
+
   static bool get isConfigured =>
       url.trim().isNotEmpty && anonKey.trim().isNotEmpty;
 }

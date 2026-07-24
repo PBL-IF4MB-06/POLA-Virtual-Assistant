@@ -49,5 +49,16 @@
 	<string>POLA membutuhkan akses mikrofon untuk input suara.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>POLA membutuhkan akses pengenalan suara untuk mengubah bicara menjadi teks.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ac.id.polibatam.pola</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

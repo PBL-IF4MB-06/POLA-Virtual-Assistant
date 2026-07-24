@@ -29,6 +29,7 @@ class PolaBot {
 
   Future<BotReply> getResponse(
     String question, {
+    List<({String role, String content})> conversationHistory = const [],
     bool webSearchEnabled = false,
     String googleApiKey = '',
     String googleCx = '',
@@ -46,31 +47,13 @@ class PolaBot {
         backendBaseUrl: backendUrl,
         userQuestion: cleaned,
         knowledgeHits: hits,
+        conversationHistory: conversationHistory,
       );
       final aiText = out.reply;
       if (aiText != null && aiText.isNotEmpty) {
-        // Sources memang tetap dibuat di sini, tapi UI sudah disembunyikan dan ChatState tidak menyimpan sources.
-        final sources = <BotSource>[
-          const BotSource(
-            id: 'hf-backend',
-            title: 'Hugging Face (server POLA)',
-            excerpt: 'Lewat backend Anda',
-            url: null,
-          ),
-          ...hits.map(
-            (h) => BotSource(
-              id: h.sourceId,
-              title: h.sourceTitle,
-              excerpt: _shorten(h.text, 180),
-              url: null,
-            ),
-          ),
-        ];
-        return BotReply(text: aiText, sources: sources);
+        return BotReply(text: aiText, sources: const []);
       }
-
-      // Jika backend dikonfigurasi tapi gagal/empty, biarkan caller memutuskan retry (loading terus).
-      throw Exception(out.hint ?? 'AI backend gagal memberikan jawaban.');
+      // Backend offline / gagal — lanjut ke basis pengetahuan lokal (demo tetap jalan).
     }
 
     // 2) Admin FAQ (setelah AI tidak menjawab).

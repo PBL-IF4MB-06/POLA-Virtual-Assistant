@@ -1,0 +1,91 @@
+@startuml system-overview-pola
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam dpi 220
+skinparam linetype ortho
+scale 1.15
+
+title Gambaran Umum Sistem - Implementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile
+
+left to right direction
+
+actor Admin as A
+actor User as U
+
+rectangle "POLA Virtual Assistant\nAplikasi Mobile (Flutter)" as APP #EAF2FF
+rectangle "AI Backend\n(Gemini API / Custom Backend)" as AI #EEF4FF
+database "Database / Local Storage\n(SharedPreferences / SQLite)" as DB #EEF4FF
+rectangle "Web Search Fallback\n(Wikipedia, DuckDuckGo,\nGoogle CSE)" as WS #F8FAFC
+rectangle "Knowledge Base Lokal\n(Dataset, Dokumen, FAQ Polibatam, dll)" as KB #F8FAFC
+
+A -right-> APP
+APP -left-> A
+U -left-> APP
+APP -right-> U
+
+APP -down-> AI
+AI -down-> DB
+DB ..up..> AI
+WS ..up..> DB
+KB ..up..> DB
+
+note left of A
+  Alur Admin
+  - Login ke aplikasi (Admin Area)
+  - Kelola FAQ/Knowledge Base (Tambah, Edit, Hapus)
+  - Kelola data pengguna (jika diperlukan)
+  - Lihat statistik & riwayat penggunaan
+  - Konfigurasi sistem (Web Search, AI Backend)
+end note
+
+note left of APP
+  Tampilan Admin
+  - Dashboard Admin
+  - Manajemen FAQ (Tambah, Edit, Hapus)
+  - Manajemen Pengguna
+  - Riwayat Chat & Aktivitas
+  - Pengaturan Sistem
+end note
+
+note right of U
+  Alur Pengguna
+  - Registrasi / Login / Lanjut sebagai tamu
+  - Membuat chat baru
+  - Mengirim pesan (teks)
+  - Mengirim lampiran gambar
+  - Melihat riwayat chat
+  - Mengubah pengaturan
+  - Mendapatkan jawaban dari asisten POLA
+  - (Opsional) Pencarian web jika diaktifkan
+end note
+
+note right of APP
+  Tampilan User
+  - Halaman Login / Register
+  - Beranda / Daftar Chat
+  - Halaman Chat (ChatPage)
+  - Pengaturan (Settings)
+  - Riwayat Chat
+  - Hasil Jawaban & Sumber
+end note
+
+note left of DB
+  Data yang Dikelola Admin
+  - Data FAQ / Knowledge Base
+  - Data pengguna (opsional)
+  - Konfigurasi sistem
+  - Log aktivitas pengguna
+  - Statistik penggunaan
+end note
+
+note right of DB
+  Data yang Dikelola User
+  - Data profil & pengaturan
+  - Riwayat chat (Conversation)
+  - Pesan (ChatMessage)
+  - Lampiran (ChatAttachment)
+  - Sumber jawaban (ChatSource)
+end note
+
+@enduml

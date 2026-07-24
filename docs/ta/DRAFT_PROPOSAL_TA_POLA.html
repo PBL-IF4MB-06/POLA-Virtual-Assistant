@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Draft Proposal TA - POLA</title>
+  <style>
+    @page { margin: 2cm; size: A4; }
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #111;
+      max-width: 17cm;
+      margin: 0 auto;
+      padding: 1.5cm;
+    }
+    h1 { font-size: 16pt; text-align: center; margin: 0.5cm 0; text-transform: uppercase; }
+    h2 { font-size: 13pt; margin-top: 1cm; border-bottom: 1px solid #333; padding-bottom: 4px; }
+    h3 { font-size: 12pt; margin-top: 0.6cm; }
+    .cover { text-align: center; margin-bottom: 1.2cm; }
+    .cover .label { font-size: 14pt; font-weight: bold; margin-bottom: 0.4cm; }
+    table { width: 100%; border-collapse: collapse; margin: 0.5cm 0; font-size: 11pt; }
+    th, td { border: 1px solid #444; padding: 6px 8px; vertical-align: top; }
+    th { background: #f0f0f0; }
+    ul, ol { margin: 0.3cm 0 0.3cm 1cm; }
+    li { margin-bottom: 0.15cm; }
+    .meta { margin: 0.8cm auto; width: 90%; }
+    .meta td:first-child { width: 35%; font-weight: bold; }
+    .footer { margin-top: 1.5cm; text-align: center; }
+    .small { font-size: 11pt; color: #333; }
+    p { text-align: justify; margin: 0.35cm 0; }
+  </style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="label">DRAFT PROPOSAL TUGAS AKHIR</div>
+  <p class="small">Politeknik Negeri Batam<br>Program Studi D-III Teknik Informatika</p>
+</div>
+
+<h1>Aplikasi Mobile POLA —<br>Polibatam AI Assistant</h1>
+
+<table class="meta">
+  <tr><td>Nama Mahasiswa</td><td>Muhammad Nabil</td></tr>
+  <tr><td>NIM</td><td>3312411007</td></tr>
+  <tr><td>Program Studi</td><td>D-III Teknik Informatika</td></tr>
+  <tr><td>Institusi</td><td>Politeknik Negeri Batam</td></tr>
+  <tr><td>Tahun Ajaran</td><td>2025/2026</td></tr>
+</table>
+
+<h2>1. Latar Belakang</h2>
+<p>Politeknik Negeri Batam (Polibatam) memiliki berbagai layanan informasi akademik dan kemahasiswaan yang tersebar di berbagai kanal, seperti Sistem Informasi Akademik (SIA), website kampus, pengumuman, dan komunikasi langsung dengan bagian administrasi. Mahasiswa dan civitas kampus sering membutuhkan informasi cepat mengenai jadwal kuliah, KRS, beasiswa, magang, fasilitas kampus, dan prosedur administratif.</p>
+<p>Selama proses pembelajaran berbasis proyek (PBL), telah dikembangkan prototipe sistem informasi berbasis mobile dengan pendekatan <strong>chatbot</strong> untuk membantu pengguna mendapatkan jawaban seputar kampus. Namun, pengalaman pengguna masih terbatas pada antarmuka percakapan berbasis teks yang kurang interaktif dan kurang memberikan kesan asisten digital yang mendampingi pengguna secara visual.</p>
+<p>Perkembangan teknologi kecerdasan buatan (AI) dan animasi antarmuka mobile memungkinkan dibuatnya <strong>asisten virtual (AI Assistant)</strong> yang tidak hanya menjawab pertanyaan, tetapi juga tampil dengan karakter visual animasi, umpan balik interaktif, dan pengalaman pengguna yang lebih natural. Asisten AI diposisikan berbeda dari chatbot konvensional karena menekankan <strong>pendampingan kontekstual, respons visual, dan interaksi multimodal</strong> (teks, suara, animasi status).</p>
+<p>Berdasarkan hal tersebut, penulis merencanakan pengembangan lanjutan menjadi aplikasi mobile <strong>POLA (Polibatam AI Assistant)</strong> yang mengintegrasikan AI Assistant beranimasi sebagai pusat interaksi pengguna dengan layanan informasi kampus Polibatam.</p>
+
+<h2>2. Rumusan Masalah</h2>
+<ol>
+  <li>Bagaimana merancang aplikasi mobile POLA yang menampilkan <strong>AI Assistant beranimasi</strong> sebagai pengganti pendekatan chatbot konvensional?</li>
+  <li>Bagaimana mengintegrasikan kecerdasan buatan ke dalam asisten virtual agar dapat memberikan informasi kampus Polibatam secara kontekstual dan relevan?</li>
+  <li>Bagaimana mengimplementasikan animasi interaktif (status berpikir, berbicara, idle, sukses, error) pada karakter asisten untuk meningkatkan pengalaman pengguna?</li>
+  <li>Bagaimana menguji fungsionalitas dan kelayakan aplikasi mobile POLA sebagai asisten informasi kampus?</li>
+</ol>
+
+<h2>3. Tujuan</h2>
+<h3>3.1 Tujuan Umum</h3>
+<p>Membangun aplikasi mobile <strong>POLA — Polibatam AI Assistant</strong> yang menyediakan asisten virtual beranimasi untuk membantu civitas Polibatam mengakses informasi kampus secara interaktif.</p>
+<h3>3.2 Tujuan Khusus</h3>
+<ol>
+  <li>Merancang antarmuka aplikasi mobile dengan karakter <strong>AI Assistant animasi</strong> sebagai elemen utama interaksi.</li>
+  <li>Mengimplementasikan modul asisten AI yang mampu memahami dan merespons pertanyaan seputar Polibatam.</li>
+  <li>Mengintegrasikan animasi status asisten (idle, listening, thinking, speaking, success, error) pada alur interaksi pengguna.</li>
+  <li>Menyediakan modul informasi kampus yang terhubung dengan AI Assistant.</li>
+  <li>Melakukan pengujian fungsional dan evaluasi pengalaman pengguna terhadap aplikasi yang dikembangkan.</li>
+</ol>
+
+<h2>4. Manfaat</h2>
+<h3>4.1 Manfaat Teoritis</h3>
+<ul>
+  <li>Memberikan kontribusi dalam penerapan AI Assistant beranimasi pada aplikasi mobile layanan kampus.</li>
+  <li>Menjadi referensi pengembangan asisten virtual interaktif di lingkungan pendidikan vokasi.</li>
+</ul>
+<h3>4.2 Manfaat Praktis</h3>
+<ul>
+  <li>Memudahkan mahasiswa dan civitas Polibatam mendapatkan informasi kampus secara cepat.</li>
+  <li>Meningkatkan pengalaman pengguna melalui antarmuka visual yang lebih menarik dibanding chatbot teks biasa.</li>
+  <li>Menjadi prototype layanan digital kampus yang dapat dikembangkan lebih lanjut oleh Polibatam.</li>
+</ul>
+
+<h2>5. Ruang Lingkup</h2>
+<ol>
+  <li><strong>Platform:</strong> Aplikasi mobile Android (opsi web untuk demonstrasi).</li>
+  <li><strong>Pengguna:</strong> Mahasiswa dan civitas Politeknik Negeri Batam.</li>
+  <li><strong>Fitur utama:</strong> Karakter AI Assistant beranimasi, interaksi tanya-jawab, modul informasi kampus, riwayat interaksi.</li>
+  <li><strong>Teknologi:</strong> Flutter, Lottie/Rive, Node.js + LLM API, Supabase (opsional).</li>
+  <li><strong>Batasan:</strong> Domain Polibatam; tidak integrasi penuh SIA tanpa API resmi.</li>
+</ol>
+
+<h2>6. Perbedaan dengan Proyek PBL</h2>
+<table>
+  <tr><th>Aspek</th><th>PBL (Sebelumnya)</th><th>Tugas Akhir (Rencana)</th></tr>
+  <tr><td>Judul</td><td>Implementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile</td><td>Aplikasi Mobile POLA — Polibatam AI Assistant</td></tr>
+  <tr><td>Konsep</td><td>Chatbot percakapan teks</td><td>AI Assistant beranimasi</td></tr>
+  <tr><td>Interaksi</td><td>Bubble chat messenger</td><td>Karakter asisten + animasi status</td></tr>
+  <tr><td>Fokus UX</td><td>Kecepatan jawaban</td><td>Pendampingan visual interaktif</td></tr>
+</table>
+
+<h2>7. Metodologi</h2>
+<p>Metode <strong>Research and Development (RnD)</strong>: studi literatur, analisis kebutuhan, perancangan sistem, implementasi, pengujian, evaluasi, dan penyusunan laporan.</p>
+
+<h2>8. Rencana Tahapan</h2>
+<table>
+  <tr><th>No</th><th>Tahapan</th><th>Estimasi</th></tr>
+  <tr><td>1</td><td>Proposal & studi literatur</td><td>Bulan 1–2</td></tr>
+  <tr><td>2</td><td>Analisis & perancangan (wireframe, karakter asisten)</td><td>Bulan 2–3</td></tr>
+  <tr><td>3</td><td>Implementasi frontend & animasi</td><td>Bulan 3–5</td></tr>
+  <tr><td>4</td><td>Implementasi backend AI</td><td>Bulan 4–5</td></tr>
+  <tr><td>5</td><td>Integrasi & pengujian</td><td>Bulan 5–6</td></tr>
+  <tr><td>6</td><td>Penyusunan laporan & sidang</td><td>Bulan 6–7</td></tr>
+</table>
+
+<h2>9. Konsep AI Assistant Beranimasi</h2>
+<p>Asisten POLA dirancang dengan animasi status: <em>idle</em> (menunggu), <em>listening</em> (mendengarkan), <em>thinking</em> (memproses), <em>speaking</em> (menjawab), serta umpan balik <em>success/error</em>. Pendekatan ini menekankan pengalaman <strong>assistant</strong> yang mendampingi, bukan sekadar <strong>chatbot</strong> berbasis log percakapan.</p>
+
+<h2>10. Referensi (Draft)</h2>
+<ol class="small">
+  <li>Flutter Documentation — Animation & Motion.</li>
+  <li>Lottie Files / Rive Documentation.</li>
+  <li>Politeknik Negeri Batam — https://polibatam.ac.id/</li>
+  <li>Supabase Documentation.</li>
+</ol>
+
+<div class="footer">
+  <p><strong>Polibatam, Juli 2026</strong></p>
+  <p>Muhammad Nabil<br>NIM 3312411007</p>
+</div>
+
+</body>
+</html>

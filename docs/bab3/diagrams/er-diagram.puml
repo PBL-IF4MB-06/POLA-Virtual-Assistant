@@ -1,0 +1,87 @@
+@startuml er-diagram-pola
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 220
+scale 1.25
+
+title ER Diagram\nImplementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile
+
+entity "User" as user {
+  * id : String <<PK>>
+  --
+  email : String
+  fullName : String
+  role : String
+  authType : String
+}
+
+entity "Settings" as settings {
+  * id : String <<PK>>
+  --
+  theme : String
+  language : String
+  webSearchEnabled : Boolean
+  aiBackendBaseUrl : String
+  notificationEnabled : Boolean
+}
+
+entity "Conversation" as convo {
+  * id : String <<PK>>
+  --
+  title : String
+  createdAt : DateTime
+  userId : String <<FK>>
+}
+
+entity "ChatMessage" as msg {
+  * id : String <<PK>>
+  --
+  conversationId : String <<FK>>
+  sender : String
+  text : String
+  createdAt : DateTime
+}
+
+entity "ChatAttachment" as attach {
+  * id : String <<PK>>
+  --
+  messageId : String <<FK>>
+  type : String
+  fileName : String
+  dataUrl : String
+}
+
+entity "Bookmark" as bookmark {
+  * id : String <<PK>>
+  --
+  userId : String <<FK>>
+  question : String
+  answer : String
+  savedAt : DateTime
+}
+
+entity "AdminKbEntry" as kb {
+  * id : String <<PK>>
+  --
+  question : String
+  answer : String
+  updatedAt : DateTime
+}
+
+user ||--o| settings : has
+user ||--o{ convo : creates
+convo ||--o{ msg : contains
+msg ||--o{ attach : has
+user ||--o{ bookmark : saves
+
+note bottom of settings
+  Disimpan di SharedPreferences
+end note
+
+note bottom of convo
+  Digunakan untuk riwayat chat
+end note
+
+@enduml

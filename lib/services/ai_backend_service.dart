@@ -12,6 +12,7 @@ class AiBackendService {
     required String backendBaseUrl,
     required String userQuestion,
     List<KnowledgeSnippet> knowledgeHits = const [],
+    List<({String role, String content})> conversationHistory = const [],
   }) async {
     var root = backendBaseUrl.trim();
     if (root.isEmpty) return (reply: null, hint: null);
@@ -28,6 +29,14 @@ class AiBackendService {
             (h) => <String, String>{
               'sourceTitle': h.sourceTitle,
               'text': h.text,
+            },
+          )
+          .toList(),
+      'conversationHistory': conversationHistory
+          .map(
+            (t) => <String, String>{
+              'role': t.role,
+              'content': t.content,
             },
           )
           .toList(),

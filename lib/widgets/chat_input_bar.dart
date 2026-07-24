@@ -12,10 +12,14 @@ class ChatInputBar extends StatefulWidget {
     required this.onSendAttachments,
     this.hintText = 'Tulis pertanyaan…',
     this.speechLocaleId,
+    this.spellCheckEnabled = true,
+    this.enabled = true,
   });
 
   final String hintText;
   final String? speechLocaleId;
+  final bool spellCheckEnabled;
+  final bool enabled;
   final ValueChanged<String> onSend;
   final Future<void> Function(List<PickedAttachment> attachments)
       onSendAttachments;
@@ -85,6 +89,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
   }
 
   void _send() {
+    if (!widget.enabled) return;
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     widget.onSend(text);
@@ -148,7 +153,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
   }
 
   Future<void> _toggleMic() async {
-    if (_micBusy) return;
+    if (!widget.enabled || _micBusy) return;
 
     if (_isListening) {
       await _finishListening();
@@ -215,13 +220,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
     );
   }
 
-  void _comingSoon(String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label segera hadir.')),
-    );
-  }
-
   Future<void> _openAttachmentsMenu() async {
+    if (!widget.enabled) return;
     final picked = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -243,11 +243,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
               title: const Text('Ambil Gambar'),
               onTap: () => Navigator.of(context).pop('camera'),
             ),
-            ListTile(
-              leading: const Icon(Icons.link_rounded),
-              title: const Text('Upload File'),
-              onTap: () => Navigator.of(context).pop('file'),
-            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -258,8 +253,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
       await _pickImage(ImageSource.gallery);
     } else if (picked == 'camera') {
       await _pickImage(ImageSource.camera);
-    } else if (picked == 'file') {
-      _comingSoon('Upload file');
     }
   }
 
@@ -303,16 +296,22 @@ class _ChatInputBarState extends State<ChatInputBar> {
                           foregroundColor: cs.onSurfaceVariant,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        onPressed: _isListening ? null : _openAttachmentsMenu,
+                        onPressed: widget.enabled && !_isListening
+                            ? _openAttachmentsMenu
+                            : null,
                         icon: const Icon(Icons.add_rounded, size: 22),
                       ),
                       Expanded(
                         child: TextField(
                           controller: _controller,
                           focusNode: _focusNode,
-                          readOnly: _isListening,
+                          readOnly: _isListening || !widget.enabled,
+                          enabled: widget.enabled,
                           textInputAction: TextInputAction.newline,
                           textCapitalization: TextCapitalization.sentences,
+                          spellCheckConfiguration: widget.spellCheckEnabled
+                              ? null
+                              : const SpellCheckConfiguration.disabled(),
                           onSubmitted: (_) => _send(),
                           onChanged: (v) {
                             final ok = v.trim().isNotEmpty;
@@ -358,7 +357,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                               : null,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        onPressed: _toggleMic,
+                        onPressed: widget.enabled ? _toggleMic : null,
                         icon: Icon(
                           _isListening
                               ? Icons.mic_rounded
@@ -369,7 +368,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
                       const SizedBox(width: 2),
                       if (compact)
                         FilledButton(
-                          onPressed: _canSend && !_isListening ? _send : null,
+                          onPressed: widget.enabled && _canSend && !_isListening
+                              ? _send
+                              : null,
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -384,7 +385,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
                         )
                       else
                         FilledButton.icon(
-                          onPressed: _canSend && !_isListening ? _send : null,
+                          onPressed: widget.enabled && _canSend && !_isListening
+                              ? _send
+                              : null,
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,

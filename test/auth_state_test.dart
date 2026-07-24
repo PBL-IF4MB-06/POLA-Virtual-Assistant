@@ -31,5 +31,31 @@ void main() {
     final err = await auth.loginWithPassword(email: 'a@b.com', password: 'wrong');
     expect(err, isNotNull);
   });
+
+  test('login is case-insensitive for email', () async {
+    final auth = AuthState();
+    await auth.load();
+    await auth.register(email: 'User@Polibatam.ac.id', password: 'secret1');
+
+    final err = await auth.loginWithPassword(
+      email: 'user@polibatam.ac.id',
+      password: 'secret1',
+    );
+    expect(err, isNull);
+    expect(auth.isLoggedIn, true);
+  });
+
+  test('demo admin account is available locally', () async {
+    final auth = AuthState();
+    await auth.load();
+
+    final err = await auth.loginWithPassword(
+      email: AuthState.demoAdminEmail,
+      password: AuthState.demoAdminPassword,
+    );
+    expect(err, isNull);
+    expect(auth.isLoggedIn, true);
+    expect(auth.isAdmin, true);
+  });
 }
 

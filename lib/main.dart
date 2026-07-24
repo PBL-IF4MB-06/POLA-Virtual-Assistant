@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'app/app_state_scope.dart';
 import 'config/env_config.dart';
-import 'pages/app_shell_v7.dart';
+import 'pages/splash_page.dart';
 import 'services/supabase/supabase_service.dart';
 import 'state/auth_state.dart';
+import 'state/bookmark_state.dart';
 import 'state/chat_state.dart';
+import 'state/notification_state.dart';
 import 'state/settings_state.dart';
 import 'state/theme_state.dart';
 import 'ui/theme/pola_theme_v6.dart';
@@ -28,6 +30,8 @@ class _POLAAppState extends State<POLAApp> {
   final AuthState _auth = AuthState();
   final SettingsState _settings = SettingsState();
   final ThemeState _theme = ThemeState();
+  final BookmarkState _bookmarks = BookmarkState();
+  final NotificationState _notifications = NotificationState();
   late final ChatState _chat = ChatState(settings: _settings);
   bool _ready = false;
 
@@ -42,6 +46,8 @@ class _POLAAppState extends State<POLAApp> {
     await _chat.loadFromStorage();
     await _settings.load();
     await _theme.load();
+    await _bookmarks.load();
+    await _notifications.load();
     if (mounted) setState(() => _ready = true);
   }
 
@@ -50,6 +56,8 @@ class _POLAAppState extends State<POLAApp> {
     _auth.dispose();
     _chat.dispose();
     _settings.dispose();
+    _bookmarks.dispose();
+    _notifications.dispose();
     super.dispose();
   }
 
@@ -60,6 +68,8 @@ class _POLAAppState extends State<POLAApp> {
       chat: _chat,
       settings: _settings,
       theme: _theme,
+      bookmarks: _bookmarks,
+      notifications: _notifications,
       child: AnimatedBuilder(
         animation: _theme,
         builder: (context, _) {
@@ -72,7 +82,7 @@ class _POLAAppState extends State<POLAApp> {
             darkTheme: dark,
             themeMode: _theme.mode,
             home: _ready
-                ? const AppShellV7()
+                ? const SplashPage()
                 : const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   ),

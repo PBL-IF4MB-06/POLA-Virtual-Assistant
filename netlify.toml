@@ -1,0 +1,11 @@
+# Deploy website: https://app.netlify.com → Add new site → Import from Git
+# Atau drag folder releases/POLA-website ke Netlify Drop
+
+[build]
+  publish = "releases/POLA-website"
+
+# Flutter web di subpath /app/
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200

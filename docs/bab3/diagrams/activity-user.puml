@@ -1,0 +1,51 @@
+@startuml activity-user-pola
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam dpi 220
+scale 1.1
+
+title Activity Diagram - User\nImplementasi Chatbot AI pada Aplikasi POLA Berbasis Mobile
+
+|User|
+start
+:Open POLA application;
+
+if (User already logged in?) then (yes)
+  :Open main app shell;
+else (no)
+  :Login with Google / email or continue as guest;
+  :Open main app shell;
+endif
+
+:Choose feature from menu
+(Beranda, Chatbot, Kampus, Profil);
+
+repeat
+  if (User wants to chat?) then (yes)
+    :Type question or use quick prompt;
+    :Send message to chatbot;
+    |System|
+    :Process request with PolaBot;
+    :Retrieve relevant knowledge;
+    :Display answer to user;
+    |User|
+  elseif (User wants to share image?) then (yes)
+    :Select image attachment;
+    :Send image with question;
+    |System|
+    :Process image + text input;
+    :Display answer to user;
+    |User|
+  elseif (User wants to see history?) then (yes)
+    :Open chat history;
+    :Select previous conversation;
+  else (User wants settings/profile)
+    :Open profile or settings;
+    :Update profile, theme, or notification preferences;
+  endif
+repeat while (Continue interaction?) is (yes)
+->no;
+stop
+
+@enduml

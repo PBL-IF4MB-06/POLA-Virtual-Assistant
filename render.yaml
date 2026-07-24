@@ -1,0 +1,19 @@
+# Deploy gratis di https://render.com → New → Blueprint → connect repo
+services:
+  - type: web
+    name: pola-backend
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: KOBOI_API_KEY
+        sync: false
+      - key: KOBOI_BASE_URL
+        value: https://api.koboillm.com/v1
+      - key: KOBOI_MODEL
+        value: gemini/gemini-2.5-flash

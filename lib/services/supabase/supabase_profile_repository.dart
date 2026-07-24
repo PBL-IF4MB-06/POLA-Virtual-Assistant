@@ -51,6 +51,43 @@ class SupabaseProfileRepository {
     return SupabaseProfile.fromRow(row);
   }
 
+  /// Membuat profil + pengaturan default jika trigger DB belum jalan.
+  Future<void> ensureCurrentProfile() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+
+    final meta = user.userMetadata ?? {};
+    final email = user.email ?? '';
+    final displayName = (meta['full_name'] as String?)?.trim() ??
+        (meta['name'] as String?)?.trim() ??
+        (email.isNotEmpty ? email.split('@').first : 'User');
+
+    final existing = await _db
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (existing == null) {
+      await _db.from('profiles').insert({
+        'id': user.id,
+        'email': email,
+        'display_name': displayName,
+        'role': 'user',
+      });
+    }
+
+    final settings = await _db
+        .from('user_settings')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    if (settings == null) {
+      await _db.from('user_settings').insert({'user_id': user.id});
+    }
+  }
+
   Future<void> updateProfile({
     String? displayName,
     String? username,

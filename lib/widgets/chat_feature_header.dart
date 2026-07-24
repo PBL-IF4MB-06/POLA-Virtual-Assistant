@@ -55,7 +55,7 @@ class ChatFeatureHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Tanya seputar Polibatam',
+                      'Chatbot POLA siap membantu',
                       style: tt.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
@@ -64,13 +64,29 @@ class ChatFeatureHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'POLA fokus ke Politeknik Negeri Batam (jadwal, PMB, UKT, prodi, fasilitas). '
-                      'Untuk jawaban dari web, sertakan kata Polibatam.',
+                      'Implementasi chatbot AI berbasis mobile untuk Politeknik Negeri Batam — '
+                      'jadwal, PMB, UKT, prodi, beasiswa, dan fasilitas kampus.',
                       style: tt.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         height: 1.45,
                         fontWeight: FontWeight.w400,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.mic_none_rounded, size: 14, color: cs.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Input suara • Riwayat chat • Umpan balik jawaban',
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
